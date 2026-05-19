@@ -149,7 +149,7 @@ export default function GoldenBetsPage() {
                 {Object.entries(playersByTeam).map(([tid, { teamName, players: ps }]) => (
                   <optgroup key={tid} label={teamName}>
                     {ps.map(p => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
+                      <option key={p.id} value={p.id}>{p.name_he ?? p.name}</option>
                     ))}
                   </optgroup>
                 ))}

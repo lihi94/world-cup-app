@@ -12,7 +12,8 @@
     "bootstrap": "node scripts/bootstrap.mjs",
     "sync": "node scripts/sync.mjs",
     "bots:setup": "node scripts/setup-bots.mjs",
-    "bots:run": "node scripts/run-bots.mjs"
+    "bots:run": "node scripts/run-bots.mjs",
+    "top-scorers": "node scripts/setup-top-scorers.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",

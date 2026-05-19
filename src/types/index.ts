@@ -12,6 +12,7 @@ export interface Team {
 export interface Player {
   id: string
   name: string
+  name_he: string | null
   team_id: string | null
   external_id: number | null
   teams?: Team
