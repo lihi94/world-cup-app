@@ -1,5 +1,4 @@
 import { Link, useLocation } from 'react-router-dom'
-import { supabase } from '../../services/supabase'
 import { he } from '../../i18n/he'
 import type { Profile } from '../../types'
 
@@ -33,7 +32,6 @@ export default function NavBar({ profile }: NavBarProps) {
                 to={item.path}
                 className="relative flex flex-col items-center gap-0.5 px-3 py-1 transition-all"
               >
-                {/* Active glow indicator */}
                 {active && (
                   <>
                     <span className="absolute -top-px w-7 h-0.5 bg-emerald-400 rounded-full shadow-[0_0_8px_rgba(52,211,153,0.6)]" />
@@ -53,15 +51,6 @@ export default function NavBar({ profile }: NavBarProps) {
               </Link>
             )
           })}
-
-          {/* Logout */}
-          <button
-            onClick={() => supabase.auth.signOut()}
-            className="flex flex-col items-center gap-0.5 px-3 py-1 transition-all hover:opacity-100"
-          >
-            <span className="text-xl grayscale opacity-70 hover:opacity-100 hover:grayscale-0">🚪</span>
-            <span className="text-[10px] font-bold text-gray-500">{he.logout}</span>
-          </button>
         </div>
       </div>
     </nav>

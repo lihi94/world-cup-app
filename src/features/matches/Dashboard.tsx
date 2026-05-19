@@ -9,6 +9,12 @@ import { formatDateHeader, dateKey } from '../../utils/date'
 import { he } from '../../i18n/he'
 import type { Match, Prediction } from '../../types'
 
+async function handleLogout() {
+  if (confirm('להתנתק מהאפליקציה?')) {
+    await supabase.auth.signOut()
+  }
+}
+
 export default function Dashboard() {
   const { user, profile } = useAuth()
   const [upcomingMatches, setUpcomingMatches] = useState<Match[]>([])
@@ -84,9 +90,19 @@ export default function Dashboard() {
       <Hero image="stadium" overlay="green" height="lg">
         <div className="flex items-center justify-between">
           <WorldCupLogo size="md" />
-          <span className="text-[10px] font-bold tracking-[0.2em] text-emerald-200/90 uppercase bg-black/30 px-2 py-1 rounded-full backdrop-blur-sm">
-            ליגת החברים
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold tracking-[0.2em] text-emerald-200/90 uppercase bg-black/30 px-2 py-1 rounded-full backdrop-blur-sm">
+              ליגת החברים
+            </span>
+            <button
+              onClick={handleLogout}
+              className="text-base bg-black/30 hover:bg-black/50 backdrop-blur-sm w-8 h-8 rounded-full flex items-center justify-center transition border border-white/10"
+              aria-label="יציאה"
+              title="יציאה"
+            >
+              🚪
+            </button>
+          </div>
         </div>
 
         <div className="flex items-end justify-between mt-auto">
