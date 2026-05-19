@@ -84,7 +84,7 @@ export default function PredictionStats({ match, refreshKey }: PredictionStatsPr
 }
 
 function OutcomeBar({
-  label, pct, count, color,
+  label, pct, color,
 }: {
   label: string; pct: number; count: number; color: string
 }) {

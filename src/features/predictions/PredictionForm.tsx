@@ -150,8 +150,8 @@ function QualifierSelect({
 
   useEffect(() => {
     // Load all teams for cases where we need to show the full list
-    supabase.from('teams').select('id, name, name_he').then(({ data }) => {
-      setExtraTeams(data ?? [])
+    supabase.from('teams').select('*').then(({ data }) => {
+      setExtraTeams((data as Team[]) ?? [])
     })
   }, [])
 
