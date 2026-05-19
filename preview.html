@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ליגת החברים — תצוגה מקדימה</title>
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Heebo', sans-serif; background: #f3f4f6; direction: rtl; }
+
+    /* ── PHONE FRAME ── */
+    .phone-frame {
+      width: 390px; min-height: 844px; background: #fff;
+      border-radius: 40px; box-shadow: 0 30px 80px rgba(0,0,0,0.25);
+      overflow: hidden; position: relative;
+    }
+    .screens-wrapper {
+      display: flex; gap: 32px; padding: 40px;
+      align-items: flex-start; justify-content: center;
+      min-height: 100vh; background: linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);
+      flex-wrap: wrap;
+    }
+    .screen-label {
+      color: #fff; text-align: center; font-size: 13px; opacity: .7;
+      margin-bottom: 10px; font-weight: 500; letter-spacing: .5px;
+    }
+    .screen-wrap { display: flex; flex-direction: column; }
+
+    /* ── NAV BAR ── */
+    .navbar {
+      position: sticky; bottom: 0; background: #fff; border-top: 1px solid #e5e7eb;
+      display: flex; justify-content: space-around; align-items: center;
+      height: 64px; padding: 0 8px;
+    }
+    .nav-item { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 12px; border-radius: 8px; cursor: pointer; text-decoration: none; }
+    .nav-item.active .nav-icon { filter: none; }
+    .nav-icon { font-size: 20px; }
+    .nav-label { font-size: 11px; font-weight: 500; color: #6b7280; }
+    .nav-item.active .nav-label { color: #16a34a; }
+
+    /* ── SCREEN 1: LOGIN ── */
+    .login-screen {
+      background: linear-gradient(180deg, #14532d 0%, #15803d 100%);
+      min-height: 844px; display: flex; align-items: center; justify-content: center; padding: 24px;
+    }
+    .login-card {
+      background: #fff; border-radius: 24px; padding: 36px 28px; width: 100%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .login-card .emoji { font-size: 52px; text-align: center; display: block; margin-bottom: 8px; }
+    .login-card h1 { font-size: 24px; font-weight: 800; color: #111; text-align: center; }
+    .login-card p { font-size: 13px; color: #9ca3af; text-align: center; margin-top: 4px; margin-bottom: 28px; }
+    .field-label { font-size: 13px; font-weight: 500; color: #374151; margin-bottom: 6px; display: block; }
+    .field-input {
+      width: 100%; border: 1.5px solid #d1d5db; border-radius: 10px;
+      padding: 11px 14px; font-size: 14px; font-family: 'Heebo',sans-serif;
+      margin-bottom: 16px; color: #111; outline: none;
+    }
+    .field-input:focus { border-color: #16a34a; }
+    .btn-primary {
+      width: 100%; background: #16a34a; color: #fff; font-size: 16px; font-weight: 700;
+      padding: 14px; border-radius: 12px; border: none; cursor: pointer; font-family: 'Heebo',sans-serif;
+      margin-top: 4px;
+    }
+    .btn-primary:hover { background: #15803d; }
+    .login-footer { font-size: 13px; color: #9ca3af; text-align: center; margin-top: 20px; }
+    .login-footer a { color: #16a34a; font-weight: 600; text-decoration: none; }
+
+    /* ── SCREEN 2: DASHBOARD ── */
+    .screen-body { padding: 20px 16px 80px; background: #f9fafb; min-height: 780px; }
+    .greeting { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+    .greeting h1 { font-size: 20px; font-weight: 800; color: #111; }
+    .greeting p { font-size: 13px; color: #6b7280; margin-top: 2px; }
+    .section-title { font-size: 13px; font-weight: 600; color: #6b7280; margin-bottom: 12px; }
+    .match-card {
+      background: #fff; border-radius: 16px; border: 1px solid #f3f4f6;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06); padding: 16px; margin-bottom: 12px;
+      cursor: pointer; transition: box-shadow .2s;
+    }
+    .match-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.1); }
+    .match-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .stage-badge { font-size: 11px; font-weight: 600; color: #15803d; background: #f0fdf4; padding: 3px 10px; border-radius: 999px; }
+    .match-time { font-size: 11px; color: #9ca3af; }
+    .match-teams { display: flex; justify-content: space-between; align-items: center; }
+    .team-display { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 90px; }
+    .team-crest { width: 36px; height: 36px; border-radius: 50%; background: #f3f4f6; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+    .team-name { font-size: 12px; font-weight: 600; color: #374151; text-align: center; line-height: 1.3; }
+    .score-display { font-size: 22px; font-weight: 900; color: #111; }
+    .score-vs { font-size: 13px; color: #d1d5db; }
+    .score-live { font-size: 16px; font-weight: 800; color: #ef4444; }
+    .match-footer { border-top: 1px solid #f3f4f6; margin-top: 12px; padding-top: 12px; display: flex; justify-content: space-between; align-items: center; }
+    .my-pred-label { font-size: 12px; color: #9ca3af; }
+    .my-pred-score { font-size: 13px; font-weight: 700; color: #374151; }
+    .pts-badge { font-size: 11px; font-weight: 800; background: #f0fdf4; color: #16a34a; padding: 2px 8px; border-radius: 999px; }
+    .lock-warning { font-size: 11px; color: #f59e0b; }
+
+    /* ── SCREEN 3: MATCH CENTER ── */
+    .match-header {
+      background: linear-gradient(180deg,#166534,#16a34a); padding: 24px 20px;
+      color: #fff; text-align: center;
+    }
+    .match-stage-badge { font-size: 11px; background: rgba(255,255,255,.2); padding: 4px 14px; border-radius: 999px; display: inline-block; margin-bottom: 8px; }
+    .match-header-time { font-size: 12px; opacity: .75; margin-bottom: 16px; }
+    .match-header-teams { display: flex; justify-content: space-between; align-items: center; padding: 0 16px; }
+    .header-team { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100px; }
+    .header-crest { width: 56px; height: 56px; background: rgba(255,255,255,.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; }
+    .header-team-name { font-size: 13px; font-weight: 700; text-align: center; line-height: 1.3; }
+    .header-score { font-size: 42px; font-weight: 900; }
+    .header-vs { font-size: 20px; opacity: .5; }
+    .predictions-section { padding: 20px 16px 80px; }
+    .predictions-title { font-size: 13px; font-weight: 600; color: #6b7280; margin-bottom: 12px; }
+    .pred-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 16px; border-radius: 12px; margin-bottom: 8px;
+    }
+    .pred-row.mine { background: #f0fdf4; border: 1px solid #bbf7d0; }
+    .pred-row.other { background: #f9fafb; }
+    .pred-name { font-size: 14px; font-weight: 600; color: #111; }
+    .pred-me-tag { font-size: 10px; color: #16a34a; margin-right: 4px; }
+    .pred-right { display: flex; align-items: center; gap: 10px; }
+    .pred-score { font-size: 16px; font-weight: 800; color: #374151; }
+    .pred-pts { font-size: 12px; font-weight: 800; background: #f0fdf4; color: #16a34a; padding: 3px 10px; border-radius: 999px; }
+    .pred-pts.zero { background: #f3f4f6; color: #9ca3af; }
+
+    /* ── SCREEN 4: LEADERBOARD ── */
+    .leaderboard-body { padding: 20px 16px 80px; background: #f9fafb; min-height: 780px; }
+    .lb-title { font-size: 20px; font-weight: 800; color: #111; margin-bottom: 16px; }
+    .lb-card { background: #fff; border-radius: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.06); overflow: hidden; }
+    .lb-header { display: grid; grid-template-columns: 48px 1fr 60px; background: #166534; color: #fff; font-size: 12px; font-weight: 600; padding: 10px 16px; }
+    .lb-row { display: grid; grid-template-columns: 48px 1fr 60px; padding: 14px 16px; align-items: center; border-bottom: 1px solid #f3f4f6; }
+    .lb-row.me { background: #f0fdf4; }
+    .lb-row.alt { background: #fafafa; }
+    .lb-rank { font-size: 18px; text-align: center; }
+    .lb-name { font-size: 14px; font-weight: 600; color: #111; }
+    .lb-name.me { color: #16a34a; }
+    .lb-pts { font-size: 18px; font-weight: 800; color: #16a34a; text-align: left; }
+    .lb-pts.normal { color: #374151; }
+
+    /* ── SCREEN 5: GOLDEN BETS ── */
+    .golden-body { padding: 20px 16px 80px; background: #f9fafb; min-height: 780px; }
+    .golden-title { font-size: 20px; font-weight: 800; color: #111; }
+    .golden-sub { font-size: 13px; color: #9ca3af; margin-top: 4px; margin-bottom: 24px; }
+    .golden-card { background: #fff; border-radius: 16px; border: 1px solid #e5e7eb; padding: 20px; margin-bottom: 20px; }
+    .golden-field-label { font-size: 13px; font-weight: 700; color: #374151; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
+    .golden-pts-badge { font-size: 11px; color: #16a34a; font-weight: 500; }
+    .golden-select {
+      width: 100%; border: 1.5px solid #d1d5db; border-radius: 10px; padding: 11px 14px;
+      font-size: 14px; font-family: 'Heebo',sans-serif; color: #374151; background: #fff;
+      margin-bottom: 20px; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: left 14px center;
+    }
+  </style>
+</head>
+<body>
+<div class="screens-wrapper">
+
+  <!-- LOGIN -->
+  <div class="screen-wrap">
+    <div class="screen-label">התחברות</div>
+    <div class="phone-frame" style="min-height:680px;">
+      <div class="login-screen">
+        <div class="login-card">
+          <span class="emoji">⚽</span>
+          <h1>ליגת החברים</h1>
+          <p>מונדיאל 2026</p>
+          <label class="field-label">דוא"ל</label>
+          <input class="field-input" type="email" placeholder="you@example.com" dir="ltr" />
+          <label class="field-label">סיסמה</label>
+          <input class="field-input" type="password" placeholder="••••••••" />
+          <button class="btn-primary">כנס</button>
+          <p class="login-footer">אין לי חשבון? <a href="#">הירשם</a></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="screen-wrap">
+    <div class="screen-label">דשבורד — משחקים קרובים</div>
+    <div class="phone-frame">
+      <div class="screen-body">
+        <div class="greeting">
+          <div>
+            <h1>שלום, אלי 👋</h1>
+            <p>47 נקודות בסה"כ</p>
+          </div>
+          <span style="font-size:36px;">⚽</span>
+        </div>
+
+        <div class="section-title">משחקים קרובים</div>
+
+        <!-- Card 1 - upcoming, no prediction yet -->
+        <div class="match-card">
+          <div class="match-top">
+            <span class="stage-badge">בתים</span>
+            <span class="match-time">ב׳ 15.6 • 21:00</span>
+          </div>
+          <div class="match-teams">
+            <div class="team-display">
+              <div class="team-crest">🇦🇷</div>
+              <div class="team-name">ארגנטינה</div>
+            </div>
+            <div class="score-vs">נגד</div>
+            <div class="team-display">
+              <div class="team-crest">🇫🇷</div>
+              <div class="team-name">צרפת</div>
+            </div>
+          </div>
+          <div class="match-footer">
+            <span></span>
+            <span class="lock-warning">⏳ נועל בעוד 2י 4ש'</span>
+          </div>
+        </div>
+
+        <!-- Card 2 - with prediction -->
+        <div class="match-card">
+          <div class="match-top">
+            <span class="stage-badge">בתים</span>
+            <span class="match-time">ג׳ 16.6 • 18:00</span>
+          </div>
+          <div class="match-teams">
+            <div class="team-display">
+              <div class="team-crest">🇧🇷</div>
+              <div class="team-name">ברזיל</div>
+            </div>
+            <div class="score-vs">נגד</div>
+            <div class="team-display">
+              <div class="team-crest">🇩🇪</div>
+              <div class="team-name">גרמניה</div>
+            </div>
+          </div>
+          <div class="match-footer">
+            <span class="my-pred-label">ניחוש שלי:</span>
+            <span class="my-pred-score">2 – 1</span>
+          </div>
+        </div>
+
+        <!-- Card 3 - LIVE -->
+        <div class="match-card">
+          <div class="match-top">
+            <span class="stage-badge">רבע גמר</span>
+            <span class="match-time">עכשיו</span>
+          </div>
+          <div class="match-teams">
+            <div class="team-display">
+              <div class="team-crest">🏴󠁧󠁢󠁥󠁮󠁧󠁿</div>
+              <div class="team-name">אנגליה</div>
+            </div>
+            <div class="score-live">● LIVE</div>
+            <div class="team-display">
+              <div class="team-crest">🇪🇸</div>
+              <div class="team-name">ספרד</div>
+            </div>
+          </div>
+          <div class="match-footer">
+            <span class="my-pred-label">ניחוש שלי:</span>
+            <span class="my-pred-score">1 – 2</span>
+          </div>
+        </div>
+
+        <!-- Card 4 - finished with points -->
+        <div class="match-card">
+          <div class="match-top">
+            <span class="stage-badge">בתים</span>
+            <span class="match-time">א׳ 12.6</span>
+          </div>
+          <div class="match-teams">
+            <div class="team-display">
+              <div class="team-crest">🇵🇹</div>
+              <div class="team-name">פורטוגל</div>
+            </div>
+            <div class="score-display">3 – 1</div>
+            <div class="team-display">
+              <div class="team-crest">🇲🇦</div>
+              <div class="team-name">מרוקו</div>
+            </div>
+          </div>
+          <div class="match-footer">
+            <span class="my-pred-label">ניחוש שלי: 3 – 1</span>
+            <span class="pts-badge">✓ 3 נק'</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="navbar">
+        <a class="nav-item active" href="#">
+          <span class="nav-icon">🏠</span>
+          <span class="nav-label" style="color:#16a34a;">ראשי</span>
+        </a>
+        <a class="nav-item" href="#"><span class="nav-icon">🏆</span><span class="nav-label">טבלה</span></a>
+        <a class="nav-item" href="#"><span class="nav-icon">⭐</span><span class="nav-label">הימורי זהב</span></a>
+        <a class="nav-item" href="#"><span class="nav-icon">🚪</span><span class="nav-label">יציאה</span></a>
+      </div>
+    </div>
+  </div>
+
+  <!-- MATCH CENTER -->
+  <div class="screen-wrap">
+    <div class="screen-label">מרכז משחק — אחרי הסיום</div>
+    <div class="phone-frame">
+      <div class="match-header">
+        <span class="match-stage-badge">גמר</span>
+        <p class="match-header-time">א׳ 19.7.2026 • 21:00</p>
+        <div class="match-header-teams">
+          <div class="header-team">
+            <div class="header-crest">🇦🇷</div>
+            <div class="header-team-name">ארגנטינה</div>
+          </div>
+          <div class="header-score">3 – 2</div>
+          <div class="header-team">
+            <div class="header-crest">🇫🇷</div>
+            <div class="header-team-name">צרפת</div>
+          </div>
+        </div>
+        <p style="font-size:12px;opacity:.75;margin-top:12px;">עולה לשלב הבא: ארגנטינה 🏆</p>
+      </div>
+
+      <div class="predictions-section">
+        <div class="predictions-title">ניחושי כל הקבוצה</div>
+
+        <div class="pred-row mine">
+          <div class="pred-name">אלי <span class="pred-me-tag">(אני)</span></div>
+          <div class="pred-right">
+            <span class="pred-score">3 – 2</span>
+            <span class="pred-pts">6 נק'</span>
+          </div>
+        </div>
+        <div class="pred-row other">
+          <div class="pred-name">דני</div>
+          <div class="pred-right">
+            <span class="pred-score">2 – 1</span>
+            <span class="pred-pts">4 נק'</span>
+          </div>
+        </div>
+        <div class="pred-row other alt">
+          <div class="pred-name">יוסי</div>
+          <div class="pred-right">
+            <span class="pred-score">1 – 1</span>
+            <span class="pred-pts">4 נק'</span>
+          </div>
+        </div>
+        <div class="pred-row other">
+          <div class="pred-name">שירה</div>
+          <div class="pred-right">
+            <span class="pred-score">2 – 2</span>
+            <span class="pred-pts zero">0 נק'</span>
+          </div>
+        </div>
+        <div class="pred-row other alt">
+          <div class="pred-name">מיכל</div>
+          <div class="pred-right">
+            <span class="pred-score">1 – 0</span>
+            <span class="pred-pts">5 נק'</span>
+          </div>
+        </div>
+        <div class="pred-row other">
+          <div class="pred-name">תום</div>
+          <div class="pred-right">
+            <span class="pred-score">3 – 1</span>
+            <span class="pred-pts">4 נק'</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="navbar">
+        <a class="nav-item active" href="#"><span class="nav-icon">🏠</span><span class="nav-label" style="color:#16a34a;">ראשי</span></a>
+        <a class="nav-item" href="#"><span class="nav-icon">🏆</span><span class="nav-label">טבלה</span></a>
+        <a class="nav-item" href="#"><span class="nav-icon">⭐</span><span class="nav-label">הימורי זהב</span></a>
+        <a class="nav-item" href="#"><span class="nav-icon">🚪</span><span class="nav-label">יציאה</span></a>
+      </div>
+    </div>
+  </div>
+
+  <!-- LEADERBOARD -->
+  <div class="screen-wrap">
+    <div class="screen-label">טבלת דירוג</div>
+    <div class="phone-frame">
+      <div class="leaderboard-body">
+        <div class="lb-title">טבלה</div>
+        <div class="lb-card">
+          <div class="lb-header">
+            <span style="text-align:center;">מקום</span>
+            <span>שחקן</span>
+            <span>נקודות</span>
+          </div>
+          <div class="lb-row">
+            <span class="lb-rank">🥇</span>
+            <span class="lb-name">דני</span>
+            <span class="lb-pts">89</span>
+          </div>
+          <div class="lb-row me">
+            <span class="lb-rank">🥈</span>
+            <span class="lb-name me">אלי <span style="font-size:10px;color:#16a34a;">(אני)</span></span>
+            <span class="lb-pts">84</span>
+          </div>
+          <div class="lb-row alt">
+            <span class="lb-rank">🥉</span>
+            <span class="lb-name">מיכל</span>
+            <span class="lb-pts">81</span>
+          </div>
+          <div class="lb-row">
+            <span class="lb-rank" style="font-size:14px;">4.</span>
+            <span class="lb-name">שירה</span>
+            <span class="lb-pts normal">77</span>
+          </div>
+          <div class="lb-row alt">
+            <span class="lb-rank" style="font-size:14px;">5.</span>
+            <span class="lb-name">יוסי</span>
+            <span class="lb-pts normal">72</span>
+          </div>
+          <div class="lb-row">
+            <span class="lb-rank" style="font-size:14px;">6.</span>
+            <span class="lb-name">תום</span>
+            <span class="lb-pts normal">68</span>
+          </div>
+          <div class="lb-row alt">
+            <span class="lb-rank" style="font-size:14px;">7.</span>
+            <span class="lb-name">נועה</span>
+            <span class="lb-pts normal">65</span>
+          </div>
+          <div class="lb-row">
+            <span class="lb-rank" style="font-size:14px;">8.</span>
+            <span class="lb-name">גל</span>
+            <span class="lb-pts normal">61</span>
+          </div>
+        </div>
+        <p style="font-size:12px;color:#9ca3af;text-align:center;margin-top:16px;">הטבלה מתעדכנת בזמן אמת לאחר כל משחק</p>
+      </div>
+
+      <div class="navbar">
+        <a class="nav-item" href="#"><span class="nav-icon">🏠</span><span class="nav-label">ראשי</span></a>
+        <a class="nav-item active" href="#"><span class="nav-icon">🏆</span><span class="nav-label" style="color:#16a34a;">טבלה</span></a>
+        <a class="nav-item" href="#"><span class="nav-icon">⭐</span><span class="nav-label">הימורי זהב</span></a>
+        <a class="nav-item" href="#"><span class="nav-icon">🚪</span><span class="nav-label">יציאה</span></a>
+      </div>
+    </div>
+  </div>
+
+  <!-- GOLDEN BETS -->
+  <div class="screen-wrap">
+    <div class="screen-label">הימורי זהב</div>
+    <div class="phone-frame">
+      <div class="golden-body">
+        <div class="golden-title">הימורי זהב</div>
+        <div class="golden-sub">ניחוש פעם אחת — לפני תחילת הטורניר</div>
+
+        <div class="golden-card">
+          <div class="golden-field-label">
+            🏆 אלוף הטורניר
+            <span class="golden-pts-badge">8 נק' על ניחוש נכון</span>
+          </div>
+          <select class="golden-select">
+            <option>ארגנטינה</option>
+          </select>
+
+          <div class="golden-field-label">
+            👟 מלך השערים
+            <span class="golden-pts-badge">8 נק' על ניחוש נכון</span>
+          </div>
+          <select class="golden-select">
+            <option>Lionel Messi</option>
+          </select>
+        </div>
+
+        <button class="btn-primary">שמור הימורי זהב</button>
+        <p style="font-size:11px;color:#9ca3af;text-align:center;margin-top:12px;">ניתן לשנות עד 11.6 בשעה 21:00</p>
+      </div>
+
+      <div class="navbar">
+        <a class="nav-item" href="#"><span class="nav-icon">🏠</span><span class="nav-label">ראשי</span></a>
+        <a class="nav-item" href="#"><span class="nav-icon">🏆</span><span class="nav-label">טבלה</span></a>
+        <a class="nav-item active" href="#"><span class="nav-icon">⭐</span><span class="nav-label" style="color:#16a34a;">הימורי זהב</span></a>
+        <a class="nav-item" href="#"><span class="nav-icon">🚪</span><span class="nav-label">יציאה</span></a>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
