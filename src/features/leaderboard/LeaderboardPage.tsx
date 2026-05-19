@@ -68,77 +68,83 @@ export default function LeaderboardPage() {
         </div>
       )}
 
-      {/* Legend */}
-      <div className="glass-card rounded-xl px-3 py-2 flex items-center justify-around text-[10px] text-gray-400 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-        <span className="flex items-center gap-1">
-          <span className="text-emerald-400">🎯</span> מדויק
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="text-blue-400">↗</span> כיוון
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="text-red-400">✗</span> טעות
-        </span>
-      </div>
-
-      {/* Full list */}
-      <div className="glass-card rounded-2xl overflow-hidden divide-y divide-white/5 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
+      {/* Full list — each row is a "card" with prominent stats */}
+      <div className="space-y-2 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
         {profiles.map((profile, i) => {
           const isMe = profile.id === user?.id
           const rank = i + 1
           const s = stats.get(profile.id)
+          const totalScored = s?.scored_total ?? 0
 
           return (
             <div
               key={profile.id}
-              className={`flex items-center gap-3 px-3 py-3 transition ${
-                isMe ? 'bg-emerald-500/10' : 'hover:bg-white/5'
+              className={`glass-card rounded-2xl px-3 py-3 transition ${
+                isMe ? 'ring-2 ring-emerald-400/60 bg-emerald-500/5' : ''
               }`}
             >
-              {/* Rank */}
-              <div className="w-7 text-center shrink-0">
-                {rank <= 3 ? (
-                  <span className="text-xl">{MEDALS[i]}</span>
-                ) : (
-                  <span className="text-xs font-black text-gray-500">#{rank}</span>
-                )}
-              </div>
+              {/* Top row: rank, avatar, name, points */}
+              <div className="flex items-center gap-3">
+                <div className="w-9 text-center shrink-0">
+                  {rank <= 3 ? (
+                    <span className="text-2xl">{MEDALS[i]}</span>
+                  ) : (
+                    <span className="text-sm font-black text-gray-500">#{rank}</span>
+                  )}
+                </div>
 
-              {/* Avatar + name + stats */}
-              <div className="flex-1 flex items-center gap-2.5 min-w-0">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl shadow-lg shrink-0 ${
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shadow-lg shrink-0 ${
                   isMe
                     ? 'bg-gradient-to-br from-emerald-400/30 to-emerald-600/30 ring-2 ring-emerald-300/50'
-                    : 'bg-gradient-to-br from-slate-700 to-slate-800'
+                    : 'bg-gradient-to-br from-slate-700 to-slate-800 border border-white/5'
                 }`}>
                   {profile.avatar || '⚽'}
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <p className={`font-bold text-sm truncate ${isMe ? 'text-emerald-300' : 'text-gray-200'}`}>
+                  <p className={`font-black text-base truncate ${isMe ? 'text-emerald-300' : 'text-gray-100'}`}>
                     {profile.username}
                     {isMe && <span className="text-[10px] text-emerald-400 mr-1.5 font-bold">• אני</span>}
                   </p>
-                  {/* Breakdown */}
-                  {s && s.scored_total > 0 ? (
-                    <div className="flex items-center gap-2 mt-0.5 text-[10px] font-bold">
-                      <span className="text-emerald-400">🎯 {s.exact_count}</span>
-                      <span className="text-blue-400">↗ {s.direction_count}</span>
-                      <span className="text-red-400">✗ {s.miss_count}</span>
-                    </div>
-                  ) : (
-                    <p className="text-[10px] text-gray-500 mt-0.5">אין משחקים שהסתיימו</p>
-                  )}
+                  <p className="text-[10px] text-gray-500 mt-0.5">
+                    {totalScored === 0 ? 'אין משחקים שהסתיימו' : `${totalScored} משחקים שהוערכו`}
+                  </p>
+                </div>
+
+                <div className="text-left shrink-0">
+                  <span className={`text-2xl font-black tabular-nums ${rank <= 3 ? 'text-amber-400' : 'text-white'}`}>
+                    {profile.total_points}
+                  </span>
+                  <p className="text-[9px] text-gray-500 -mt-1 text-center">נקודות</p>
                 </div>
               </div>
 
-              {/* Points */}
-              <div className="text-left shrink-0">
-                <span className={`text-xl font-black tabular-nums ${rank <= 3 ? 'text-amber-400' : 'text-gray-200'}`}>
-                  {profile.total_points}
-                </span>
-                <p className="text-[9px] text-gray-500 -mt-1">נקודות</p>
-              </div>
+              {/* Bottom row: prominent stats pills */}
+              {totalScored > 0 && s && (
+                <div className="mt-3 pt-3 border-t border-white/5 grid grid-cols-3 gap-2">
+                  <StatPill
+                    icon="🎯"
+                    label="מדויק"
+                    value={s.exact_count}
+                    color="emerald"
+                    total={totalScored}
+                  />
+                  <StatPill
+                    icon="↗"
+                    label="כיוון"
+                    value={s.direction_count}
+                    color="blue"
+                    total={totalScored}
+                  />
+                  <StatPill
+                    icon="✗"
+                    label="טעות"
+                    value={s.miss_count}
+                    color="red"
+                    total={totalScored}
+                  />
+                </div>
+              )}
             </div>
           )
         })}
@@ -155,6 +161,38 @@ export default function LeaderboardPage() {
         <span className="animate-pulse">⚡</span>
         מתעדכן בזמן אמת לאחר כל משחק
       </p>
+    </div>
+  )
+}
+
+type StatColor = 'emerald' | 'blue' | 'red'
+
+function StatPill({ icon, label, value, color, total }: {
+  icon: string
+  label: string
+  value: number
+  color: StatColor
+  total: number
+}) {
+  const pct = total > 0 ? Math.round((value / total) * 100) : 0
+  const palette: Record<StatColor, { bg: string; text: string; bar: string }> = {
+    emerald: { bg: 'bg-emerald-500/15 border-emerald-500/30', text: 'text-emerald-300', bar: 'bg-emerald-500' },
+    blue:    { bg: 'bg-blue-500/15 border-blue-500/30',       text: 'text-blue-300',    bar: 'bg-blue-500' },
+    red:     { bg: 'bg-red-500/15 border-red-500/30',         text: 'text-red-300',     bar: 'bg-red-500' },
+  }
+  const c = palette[color]
+
+  return (
+    <div className={`${c.bg} border rounded-xl px-2 py-1.5 relative overflow-hidden`}>
+      {/* Progress bar background */}
+      <div className={`absolute bottom-0 left-0 right-0 h-1 bg-white/5`}>
+        <div className={`h-full ${c.bar} opacity-60 transition-all duration-500`} style={{ width: `${pct}%` }} />
+      </div>
+      <div className="flex items-center justify-between">
+        <span className={`text-xs font-black ${c.text}`}>{icon}</span>
+        <span className={`text-base font-black tabular-nums ${c.text}`}>{value}</span>
+      </div>
+      <p className={`text-[9px] font-bold ${c.text} opacity-80 mt-0.5`}>{label} · {pct}%</p>
     </div>
   )
 }
