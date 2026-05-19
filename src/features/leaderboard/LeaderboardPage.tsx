@@ -68,93 +68,95 @@ export default function LeaderboardPage() {
         </div>
       )}
 
-      {/* Full list — each row is a "card" with prominent stats */}
-      <div className="space-y-2 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
-        {profiles.map((profile, i) => {
-          const isMe = profile.id === user?.id
-          const rank = i + 1
-          const s = stats.get(profile.id)
-          const totalScored = s?.scored_total ?? 0
+      {/* Table */}
+      <div className="glass-card rounded-2xl overflow-hidden animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
 
-          return (
-            <div
-              key={profile.id}
-              className={`glass-card rounded-2xl px-3 py-3 transition ${
-                isMe ? 'ring-2 ring-emerald-400/60 bg-emerald-500/5' : ''
-              }`}
-            >
-              {/* Top row: rank, avatar, name, points */}
-              <div className="flex items-center gap-3">
-                <div className="w-9 text-center shrink-0">
+        {/* Sticky header row */}
+        <div className="grid grid-cols-[28px_1fr_56px_36px_36px_36px] items-end gap-2 px-3 py-2 bg-slate-800/60 border-b border-white/10 text-[10px] font-black uppercase tracking-wider">
+          <span className="text-gray-500 text-center">#</span>
+          <span className="text-gray-400">שחקן</span>
+          <span className="text-amber-400 text-center">נק׳</span>
+          <span className="text-emerald-400 text-center" title="מדויק">🎯</span>
+          <span className="text-blue-400 text-center" title="כיוון">↗</span>
+          <span className="text-red-400 text-center" title="טעות">✗</span>
+        </div>
+
+        {/* Rows */}
+        <div className="divide-y divide-white/5">
+          {profiles.map((profile, i) => {
+            const isMe = profile.id === user?.id
+            const rank = i + 1
+            const s = stats.get(profile.id)
+            const exact = s?.exact_count ?? 0
+            const direction = s?.direction_count ?? 0
+            const miss = s?.miss_count ?? 0
+
+            return (
+              <div
+                key={profile.id}
+                className={`grid grid-cols-[28px_1fr_56px_36px_36px_36px] items-center gap-2 px-3 py-3 transition ${
+                  isMe ? 'bg-emerald-500/10 ring-1 ring-inset ring-emerald-500/30' : 'hover:bg-white/5'
+                }`}
+              >
+                {/* Rank */}
+                <div className="text-center">
                   {rank <= 3 ? (
-                    <span className="text-2xl">{MEDALS[i]}</span>
+                    <span className="text-xl">{MEDALS[i]}</span>
                   ) : (
-                    <span className="text-sm font-black text-gray-500">#{rank}</span>
+                    <span className="text-xs font-black text-gray-500">{rank}</span>
                   )}
                 </div>
 
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shadow-lg shrink-0 ${
-                  isMe
-                    ? 'bg-gradient-to-br from-emerald-400/30 to-emerald-600/30 ring-2 ring-emerald-300/50'
-                    : 'bg-gradient-to-br from-slate-700 to-slate-800 border border-white/5'
-                }`}>
-                  {profile.avatar || '⚽'}
+                {/* Player */}
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className={`text-xl w-9 h-9 rounded-xl flex items-center justify-center shadow shrink-0 ${
+                    isMe
+                      ? 'bg-gradient-to-br from-emerald-400/30 to-emerald-600/30 ring-1 ring-emerald-300/50'
+                      : 'bg-slate-700/60 border border-white/5'
+                  }`}>
+                    {profile.avatar || '⚽'}
+                  </span>
+                  <div className="min-w-0">
+                    <p className={`font-bold text-sm truncate ${isMe ? 'text-emerald-300' : 'text-gray-100'}`}>
+                      {profile.username}
+                    </p>
+                    {isMe && <p className="text-[9px] text-emerald-400 font-bold leading-none">• אני</p>}
+                  </div>
                 </div>
 
-                <div className="min-w-0 flex-1">
-                  <p className={`font-black text-base truncate ${isMe ? 'text-emerald-300' : 'text-gray-100'}`}>
-                    {profile.username}
-                    {isMe && <span className="text-[10px] text-emerald-400 mr-1.5 font-bold">• אני</span>}
-                  </p>
-                  <p className="text-[10px] text-gray-500 mt-0.5">
-                    {totalScored === 0 ? 'אין משחקים שהסתיימו' : `${totalScored} משחקים שהוערכו`}
-                  </p>
-                </div>
-
-                <div className="text-left shrink-0">
-                  <span className={`text-2xl font-black tabular-nums ${rank <= 3 ? 'text-amber-400' : 'text-white'}`}>
+                {/* Points (most prominent) */}
+                <div className="text-center">
+                  <span className={`text-2xl font-black tabular-nums leading-none drop-shadow ${
+                    rank <= 3 ? 'text-amber-400' : 'text-white'
+                  }`}>
                     {profile.total_points}
                   </span>
-                  <p className="text-[9px] text-gray-500 -mt-1 text-center">נקודות</p>
                 </div>
+
+                {/* Exact */}
+                <StatCell value={exact} color="emerald" />
+                {/* Direction */}
+                <StatCell value={direction} color="blue" />
+                {/* Miss */}
+                <StatCell value={miss} color="red" />
               </div>
+            )
+          })}
 
-              {/* Bottom row: prominent stats pills */}
-              {totalScored > 0 && s && (
-                <div className="mt-3 pt-3 border-t border-white/5 grid grid-cols-3 gap-2">
-                  <StatPill
-                    icon="🎯"
-                    label="מדויק"
-                    value={s.exact_count}
-                    color="emerald"
-                    total={totalScored}
-                  />
-                  <StatPill
-                    icon="↗"
-                    label="כיוון"
-                    value={s.direction_count}
-                    color="blue"
-                    total={totalScored}
-                  />
-                  <StatPill
-                    icon="✗"
-                    label="טעות"
-                    value={s.miss_count}
-                    color="red"
-                    total={totalScored}
-                  />
-                </div>
-              )}
+          {profiles.length === 0 && (
+            <div className="py-12 flex flex-col items-center gap-2">
+              <span className="text-5xl animate-float">🏁</span>
+              <p className="text-gray-400 text-sm">אין שחקנים עדיין</p>
             </div>
-          )
-        })}
+          )}
+        </div>
+      </div>
 
-        {profiles.length === 0 && (
-          <div className="py-12 flex flex-col items-center gap-2">
-            <span className="text-5xl animate-float">🏁</span>
-            <p className="text-gray-400 text-sm">אין שחקנים עדיין</p>
-          </div>
-        )}
+      {/* Legend */}
+      <div className="glass-card rounded-xl px-3 py-2.5 flex items-center justify-around text-[10px] text-gray-400 animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
+        <LegendItem icon="🎯" label="ניחוש מדויק" color="text-emerald-400" />
+        <LegendItem icon="↗" label="כיוון נכון" color="text-blue-400" />
+        <LegendItem icon="✗" label="טעות" color="text-red-400" />
       </div>
 
       <p className="text-xs text-gray-500 text-center flex items-center justify-center gap-1">
@@ -167,32 +169,24 @@ export default function LeaderboardPage() {
 
 type StatColor = 'emerald' | 'blue' | 'red'
 
-function StatPill({ icon, label, value, color, total }: {
-  icon: string
-  label: string
-  value: number
-  color: StatColor
-  total: number
-}) {
-  const pct = total > 0 ? Math.round((value / total) * 100) : 0
-  const palette: Record<StatColor, { bg: string; text: string; bar: string }> = {
-    emerald: { bg: 'bg-emerald-500/15 border-emerald-500/30', text: 'text-emerald-300', bar: 'bg-emerald-500' },
-    blue:    { bg: 'bg-blue-500/15 border-blue-500/30',       text: 'text-blue-300',    bar: 'bg-blue-500' },
-    red:     { bg: 'bg-red-500/15 border-red-500/30',         text: 'text-red-300',     bar: 'bg-red-500' },
+function StatCell({ value, color }: { value: number; color: StatColor }) {
+  const palette: Record<StatColor, string> = {
+    emerald: value > 0 ? 'text-emerald-300 bg-emerald-500/15 border-emerald-500/30' : 'text-gray-600 bg-white/5 border-white/5',
+    blue:    value > 0 ? 'text-blue-300    bg-blue-500/15    border-blue-500/30'    : 'text-gray-600 bg-white/5 border-white/5',
+    red:     value > 0 ? 'text-red-300     bg-red-500/15     border-red-500/30'     : 'text-gray-600 bg-white/5 border-white/5',
   }
-  const c = palette[color]
-
   return (
-    <div className={`${c.bg} border rounded-xl px-2 py-1.5 relative overflow-hidden`}>
-      {/* Progress bar background */}
-      <div className={`absolute bottom-0 left-0 right-0 h-1 bg-white/5`}>
-        <div className={`h-full ${c.bar} opacity-60 transition-all duration-500`} style={{ width: `${pct}%` }} />
-      </div>
-      <div className="flex items-center justify-between">
-        <span className={`text-xs font-black ${c.text}`}>{icon}</span>
-        <span className={`text-base font-black tabular-nums ${c.text}`}>{value}</span>
-      </div>
-      <p className={`text-[9px] font-bold ${c.text} opacity-80 mt-0.5`}>{label} · {pct}%</p>
+    <div className={`text-center text-sm font-black tabular-nums rounded-lg border py-1.5 ${palette[color]}`}>
+      {value}
     </div>
+  )
+}
+
+function LegendItem({ icon, label, color }: { icon: string; label: string; color: string }) {
+  return (
+    <span className="flex items-center gap-1">
+      <span className={`${color} text-sm font-black`}>{icon}</span>
+      <span>{label}</span>
+    </span>
   )
 }
