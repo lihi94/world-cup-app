@@ -128,7 +128,7 @@ const STAGE_MAP = {
   'LAST_16':                  'R16',
   'QUARTER_FINALS':           'QF',
   'SEMI_FINALS':              'SF',
-  'THIRD_PLACE':              'SF',     // treat as semi-level
+  'THIRD_PLACE':              'THIRD',  // 3rd-place playoff (after SFs, before FINAL)
   'FINAL':                    'FINAL',
 }
 

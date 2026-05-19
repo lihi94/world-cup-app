@@ -9,7 +9,7 @@ interface MatchCardProps {
 }
 
 const STAGE_LABELS: Record<string, string> = {
-  GROUP: he.GROUP, R16: he.R16, QF: he.QF, SF: he.SF, FINAL: he.FINAL,
+  GROUP: he.GROUP, R32: he.R32, R16: he.R16, QF: he.QF, SF: he.SF, THIRD: he.THIRD, FINAL: he.FINAL,
 }
 
 const STAGE_COLORS: Record<string, string> = {
@@ -18,6 +18,7 @@ const STAGE_COLORS: Record<string, string> = {
   R16:   'bg-purple-500/20 text-purple-300 border-purple-500/30',
   QF:    'bg-amber-500/20 text-amber-300 border-amber-500/30',
   SF:    'bg-orange-500/20 text-orange-300 border-orange-500/30',
+  THIRD: 'bg-pink-500/20 text-pink-300 border-pink-500/30',
   FINAL: 'bg-red-500/20 text-red-300 border-red-500/30',
 }
 

@@ -7,7 +7,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-type Stage = 'GROUP' | 'R32' | 'R16' | 'QF' | 'SF' | 'FINAL'
+type Stage = 'GROUP' | 'R32' | 'R16' | 'QF' | 'SF' | 'THIRD' | 'FINAL'
 
 // CRITICAL: if/else if chain — two separate `if` blocks would double-count
 // direction points when prediction is exact (e.g. group exact = 3, not 2+3=5).

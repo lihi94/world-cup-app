@@ -34,6 +34,7 @@ export const he = {
   R16: 'שמינית גמר',
   QF: 'רבע גמר',
   SF: 'חצי גמר',
+  THIRD: 'מקום שלישי',
   FINAL: 'גמר',
 
   // Match center
