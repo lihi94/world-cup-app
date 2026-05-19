@@ -23,6 +23,15 @@ export interface Profile {
   total_points: number
   is_admin: boolean
   is_bot: boolean
+  avatar: string
+}
+
+export interface LeaderboardStats {
+  user_id: string
+  exact_count: number
+  direction_count: number
+  miss_count: number
+  scored_total: number
 }
 
 export interface Match {

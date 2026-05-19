@@ -4,6 +4,7 @@ import { supabase } from '../../services/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import Spinner from '../../components/common/Spinner'
 import Hero from '../../components/common/Hero'
+import AvatarPicker from '../../components/common/AvatarPicker'
 import { he } from '../../i18n/he'
 import type { Match, Profile } from '../../types'
 
@@ -27,9 +28,11 @@ export default function AdminPage() {
   const [addingEmail, setAddingEmail] = useState(false)
   const [emailMsg, setEmailMsg] = useState('')
 
-  // Username editor
+  // Username + avatar editor
   const [selectedUserId, setSelectedUserId] = useState('')
   const [newUsername, setNewUsername] = useState('')
+  const [newAvatar, setNewAvatar] = useState('⚽')
+  const [avatarOpen, setAvatarOpen] = useState(false)
   const [savingName, setSavingName] = useState(false)
   const [nameMsg, setNameMsg] = useState('')
 
@@ -61,9 +64,12 @@ export default function AdminPage() {
   const selectedMatch = matches.find(m => m.id === selectedMatchId)
   const selectedUser = profiles.find(p => p.id === selectedUserId)
 
-  // When user is selected, prefill current name
+  // When user is selected, prefill current name + avatar
   useEffect(() => {
-    if (selectedUser) setNewUsername(selectedUser.username)
+    if (selectedUser) {
+      setNewUsername(selectedUser.username)
+      setNewAvatar(selectedUser.avatar || '⚽')
+    }
   }, [selectedUserId])
 
   async function handleScoreOverride(e: FormEvent) {
@@ -142,14 +148,14 @@ export default function AdminPage() {
 
     const { error } = await supabase
       .from('profiles')
-      .update({ username: trimmed })
+      .update({ username: trimmed, avatar: newAvatar })
       .eq('id', selectedUserId)
 
     setSavingName(false)
     if (error) {
       setNameMsg(error.code === '23505' ? 'שם משתמש כבר תפוס' : `שגיאה: ${error.message}`)
     } else {
-      setNameMsg(`✓ השם עודכן ל-${trimmed}`)
+      setNameMsg(`✓ הפרופיל עודכן: ${newAvatar} ${trimmed}`)
       await loadProfiles()
     }
   }
@@ -210,18 +216,32 @@ export default function AdminPage() {
           </div>
 
           {selectedUserId && (
-            <div className="animate-fade-in-up">
-              <label className="block text-xs font-bold text-gray-400 mb-1.5 uppercase tracking-wider">שם חדש</label>
-              <input
-                type="text"
-                value={newUsername}
-                onChange={e => setNewUsername(e.target.value)}
-                className="w-full bg-slate-800/60 border border-white/10 text-white rounded-xl px-3 py-2.5 text-right focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
-                placeholder="לדוגמה: יוסי 🇮🇱"
-                maxLength={30}
-                required
-              />
-            </div>
+            <>
+              <div className="animate-fade-in-up">
+                <label className="block text-xs font-bold text-gray-400 mb-1.5 uppercase tracking-wider">תמונת פרופיל</label>
+                <button
+                  type="button"
+                  onClick={() => setAvatarOpen(true)}
+                  className="w-full bg-slate-800/60 border border-white/10 rounded-xl px-3 py-2.5 flex items-center justify-between hover:border-purple-500/50 transition"
+                >
+                  <span className="text-xs text-gray-400">לחץ לבחירה</span>
+                  <span className="text-3xl">{newAvatar}</span>
+                </button>
+              </div>
+
+              <div className="animate-fade-in-up">
+                <label className="block text-xs font-bold text-gray-400 mb-1.5 uppercase tracking-wider">שם חדש</label>
+                <input
+                  type="text"
+                  value={newUsername}
+                  onChange={e => setNewUsername(e.target.value)}
+                  className="w-full bg-slate-800/60 border border-white/10 text-white rounded-xl px-3 py-2.5 text-right focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
+                  placeholder="לדוגמה: יוסי 🇮🇱"
+                  maxLength={30}
+                  required
+                />
+              </div>
+            </>
           )}
 
           {nameMsg && (
@@ -358,6 +378,14 @@ export default function AdminPage() {
           }`}>{emailMsg}</p>
         )}
       </section>
+
+      {avatarOpen && (
+        <AvatarPicker
+          current={newAvatar}
+          onSelect={emoji => { setNewAvatar(emoji); setAvatarOpen(false) }}
+          onClose={() => setAvatarOpen(false)}
+        />
+      )}
     </div>
   )
 }

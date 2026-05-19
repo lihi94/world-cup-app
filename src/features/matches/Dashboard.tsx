@@ -5,6 +5,7 @@ import MatchCard from './MatchCard'
 import Spinner from '../../components/common/Spinner'
 import Hero from '../../components/common/Hero'
 import WorldCupLogo from '../../components/common/WorldCupLogo'
+import AvatarPicker from '../../components/common/AvatarPicker'
 import { formatDateHeader, dateKey } from '../../utils/date'
 import { he } from '../../i18n/he'
 import type { Match, Prediction } from '../../types'
@@ -16,12 +17,20 @@ async function handleLogout() {
 }
 
 export default function Dashboard() {
-  const { user, profile } = useAuth()
+  const { user, profile, reloadProfile } = useAuth()
   const [upcomingMatches, setUpcomingMatches] = useState<Match[]>([])
   const [recentMatches, setRecentMatches] = useState<Match[]>([])
   const [myPredictions, setMyPredictions] = useState<Map<string, Prediction>>(new Map())
   const [loading, setLoading] = useState(true)
   const [showLocked, setShowLocked] = useState(false)
+  const [avatarOpen, setAvatarOpen] = useState(false)
+
+  async function updateAvatar(emoji: string) {
+    if (!user) return
+    await supabase.from('profiles').update({ avatar: emoji }).eq('id', user.id)
+    setAvatarOpen(false)
+    reloadProfile?.()
+  }
 
   useEffect(() => {
     if (!user) return
@@ -105,10 +114,19 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="flex items-end justify-between mt-auto">
-          <div>
-            <p className="text-emerald-200/90 text-sm font-medium">שלום 👋</p>
-            <h1 className="text-3xl font-black mt-0.5 leading-tight drop-shadow-lg">{profile?.username}</h1>
+        <div className="flex items-end justify-between mt-auto gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              onClick={() => setAvatarOpen(true)}
+              className="text-4xl bg-black/30 hover:bg-black/50 backdrop-blur-sm w-14 h-14 rounded-2xl flex items-center justify-center transition border border-white/15 shrink-0 active:scale-95"
+              aria-label="שנה תמונת פרופיל"
+            >
+              {profile?.avatar || '⚽'}
+            </button>
+            <div className="min-w-0">
+              <p className="text-emerald-200/90 text-sm font-medium">שלום 👋</p>
+              <h1 className="text-2xl font-black mt-0.5 leading-tight drop-shadow-lg truncate">{profile?.username}</h1>
+            </div>
           </div>
         </div>
 
@@ -222,6 +240,14 @@ export default function Dashboard() {
             ))}
           </div>
         </section>
+      )}
+
+      {avatarOpen && (
+        <AvatarPicker
+          current={profile?.avatar || '⚽'}
+          onSelect={updateAvatar}
+          onClose={() => setAvatarOpen(false)}
+        />
       )}
     </div>
   )

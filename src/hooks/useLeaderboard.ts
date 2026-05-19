@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../services/supabase'
-import type { Profile } from '../types'
+import type { Profile, LeaderboardStats } from '../types'
 
 export function useLeaderboard() {
   const [profiles, setProfiles] = useState<Profile[]>([])
+  const [stats, setStats] = useState<Map<string, LeaderboardStats>>(new Map())
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     load()
 
-    // Realtime: re-sort whenever any profile's points change
     const channel = supabase
       .channel('leaderboard-profiles')
       .on(
@@ -30,13 +30,20 @@ export function useLeaderboard() {
   }, [])
 
   async function load() {
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .order('total_points', { ascending: false })
-    setProfiles(data ?? [])
+    const [profilesRes, statsRes] = await Promise.all([
+      supabase.from('profiles').select('*').order('total_points', { ascending: false }),
+      supabase.rpc('get_leaderboard_stats'),
+    ])
+
+    setProfiles(profilesRes.data ?? [])
+
+    const statsMap = new Map<string, LeaderboardStats>()
+    for (const s of (statsRes.data ?? []) as LeaderboardStats[]) {
+      statsMap.set(s.user_id, s)
+    }
+    setStats(statsMap)
     setLoading(false)
   }
 
-  return { profiles, loading }
+  return { profiles, stats, loading }
 }
