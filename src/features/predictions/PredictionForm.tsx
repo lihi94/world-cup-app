@@ -160,20 +160,6 @@ function ScoreStepper({ value, onChange }: { value: string; onChange: (v: string
   )
 }
 
-function ScoreInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  return (
-    <input
-      type="number"
-      min={0}
-      max={20}
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      className="w-14 h-12 text-center text-2xl font-bold border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
-      placeholder="0"
-    />
-  )
-}
-
 function TeamCrest({ team }: { team?: Team }) {
   if (!team) return <div className="w-10 h-10 rounded-full bg-gray-200" />
   return (
