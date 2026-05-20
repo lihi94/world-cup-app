@@ -20,7 +20,6 @@ async function handleLogout() {
 export default function Dashboard() {
   const { user, profile, reloadProfile } = useAuth()
   const [upcomingMatches, setUpcomingMatches] = useState<Match[]>([])
-  const [recentMatches, setRecentMatches] = useState<Match[]>([])
   const [myPredictions, setMyPredictions] = useState<Map<string, Prediction>>(new Map())
   const [loading, setLoading] = useState(true)
   const [showLocked, setShowLocked] = useState(false)
@@ -45,18 +44,15 @@ export default function Dashboard() {
   async function load() {
     const now = new Date().toISOString()
 
-    const [upcomingRes, recentRes, predsRes] = await Promise.all([
+    const [upcomingRes, predsRes] = await Promise.all([
+      // Show only matches that are still SCHEDULED — once kickoff passes,
+      // matches move out of the dashboard into the "ניחושים" tab.
       supabase
         .from('matches')
         .select('*, team_a:teams!team_a_id(id,name,name_he,crest_url), team_b:teams!team_b_id(id,name,name_he,crest_url)')
+        .eq('status', 'SCHEDULED')
         .gte('start_time', now)
         .order('start_time', { ascending: true }),
-      supabase
-        .from('matches')
-        .select('*, team_a:teams!team_a_id(id,name,name_he,crest_url), team_b:teams!team_b_id(id,name,name_he,crest_url)')
-        .lt('start_time', now)
-        .order('start_time', { ascending: false })
-        .limit(5),
       supabase
         .from('predictions')
         .select('*')
@@ -64,7 +60,6 @@ export default function Dashboard() {
     ])
 
     setUpcomingMatches(upcomingRes.data ?? [])
-    setRecentMatches(recentRes.data ?? [])
 
     const predMap = new Map<string, Prediction>()
     for (const p of predsRes.data ?? []) predMap.set(p.match_id, p)
@@ -239,19 +234,8 @@ export default function Dashboard() {
         </section>
       )}
 
-      {recentMatches.length > 0 && (
-        <section className="animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
-          <h2 className="text-sm font-bold text-gray-300 uppercase tracking-wider flex items-center gap-2 mb-3 px-1">
-            <span className="w-1 h-4 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
-            משחקים אחרונים
-          </h2>
-          <div className="space-y-3">
-            {recentMatches.map(m => (
-              <MatchCard key={m.id} match={m} myPrediction={myPredictions.get(m.id)} />
-            ))}
-          </div>
-        </section>
-      )}
+      {/* Recently finished matches live on the "ניחושים" tab — keep the
+          dashboard focused on what still needs action. */}
 
       {profileOpen && (
         <ProfileEditor
