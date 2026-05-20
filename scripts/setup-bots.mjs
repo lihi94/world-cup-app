@@ -18,8 +18,8 @@ const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY
 
 const BOTS = [
-  { email: 'yani-bot@league.local',   username: 'יאני 🤖',  password: rand(24) },
-  { email: 'monkey-bot@league.local', username: 'הקוף 🐒', password: rand(24) },
+  { email: 'yani-bot@league.local',   username: 'רובט A.I', avatar: '🤖', password: rand(24) },
+  { email: 'monkey-bot@league.local', username: 'הקוף',     avatar: '🐒', password: rand(24) },
 ]
 
 async function sb(path, options = {}) {
@@ -100,12 +100,12 @@ async function main() {
       continue
     }
 
-    // 3. Update profile — set username and is_bot
+    // 3. Update profile — set username, avatar, and is_bot
     await sb(`/profiles?id=eq.${userId}`, {
       method: 'PATCH',
-      body: JSON.stringify({ username: bot.username, is_bot: true }),
+      body: JSON.stringify({ username: bot.username, avatar: bot.avatar, is_bot: true }),
     })
-    console.log(`     ↳ profile updated`)
+    console.log(`     ↳ profile updated (${bot.avatar} ${bot.username})`)
   }
 
   console.log('\n✅ Done. Next: run "node scripts/run-bots.mjs" to generate their predictions.\n')

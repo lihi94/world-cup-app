@@ -46,8 +46,8 @@ const TEAM_STRENGTH = {
 }
 const DEFAULT_STRENGTH = 68
 
-const YANI_USERNAME = 'יאני 🤖'
-const MONKEY_USERNAME = 'הקוף 🐒'
+const YANI_USERNAME = 'רובט A.I'
+const MONKEY_USERNAME = 'הקוף'
 
 async function sb(path, options = {}) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1${path}`, {
