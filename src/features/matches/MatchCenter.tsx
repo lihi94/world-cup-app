@@ -161,12 +161,14 @@ export default function MatchCenter() {
         </div>
       )}
 
-      {/* Pre-match message about hidden human predictions */}
-      {isScheduled && humanPredictions.length > 1 && (
+      {/* Pre-match message about hidden human predictions.
+          Note: RLS only returns own prediction for SCHEDULED matches, so we
+          can't know how many friends predicted — show a static hint instead. */}
+      {isScheduled && (
         <div className="glass-card rounded-2xl p-4 flex items-center gap-3 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
           <span className="text-2xl">🔒</span>
           <div className="flex-1 text-right">
-            <p className="text-sm font-bold text-gray-200">{humanPredictions.length} ניחושים של חברים</p>
+            <p className="text-sm font-bold text-gray-200">ניחושי חברים מוסתרים</p>
             <p className="text-xs text-gray-400 mt-0.5">ייחשפו ברגע שהמשחק יתחיל</p>
           </div>
         </div>

@@ -92,7 +92,7 @@ export default function GoldenBetsPage() {
           <span className="text-6xl animate-float drop-shadow-2xl">⭐</span>
         </div>
         <div className="mt-auto pt-3 border-t border-amber-300/30 flex items-center justify-between">
-          <span className="text-[10px] text-amber-100/90 font-bold uppercase tracking-widest drop-shadow">פרס יחיד למחזיק האולימפיאדה</span>
+          <span className="text-[10px] text-amber-100/90 font-bold uppercase tracking-widest drop-shadow">ניחוש אחד לפני הפתיחה — לא ניתן לשנות אחרי</span>
           <span className="text-xs text-white font-black drop-shadow">+8 נק'</span>
         </div>
       </Hero>

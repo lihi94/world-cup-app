@@ -194,11 +194,11 @@ function QualifierSelect({
 
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">{he.qualifier}</label>
+      <label className="block text-xs font-bold text-gray-400 mb-1.5 uppercase tracking-wider">{he.qualifier}</label>
       <select
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-right focus:outline-none focus:ring-2 focus:ring-green-500"
+        className="w-full bg-slate-800/60 border border-white/10 text-white rounded-xl px-3 py-2.5 text-right focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
       >
         <option value="">— בחר קבוצה עולה —</option>
         {options.map(t => (

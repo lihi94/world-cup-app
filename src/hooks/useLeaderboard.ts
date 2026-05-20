@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../services/supabase'
 import type { Profile, LeaderboardStats } from '../types'
 
@@ -24,6 +24,11 @@ export function useLeaderboard() {
   const [stats, setStats] = useState<Map<string, LeaderboardStats>>(new Map())
   const [loading, setLoading] = useState(true)
 
+  // Ref keeps the latest stats map accessible inside the realtime closure
+  // without causing a re-subscription on every stats update.
+  const statsRef = useRef(stats)
+  useEffect(() => { statsRef.current = stats }, [stats])
+
   useEffect(() => {
     load()
 
@@ -37,17 +42,13 @@ export function useLeaderboard() {
             const updated = prev.map(p =>
               p.id === payload.new.id ? (payload.new as Profile) : p
             )
-            // Re-sort with current stats snapshot
-            return [...updated].sort((a, b) => rankCompare(a, b, stats))
+            return [...updated].sort((a, b) => rankCompare(a, b, statsRef.current))
           })
         }
       )
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  // We intentionally don't re-subscribe when `stats` changes — the closure
-  // captures the latest map via setProfiles, which is fine for our use case.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   async function load() {

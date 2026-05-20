@@ -74,7 +74,11 @@ Deno.serve(async () => {
       winnerId = teamMap.get(m.awayTeam.id) ?? null
     }
 
-    const payload = {
+    // Resolve team UUIDs from the API home/away team IDs
+    const teamAId = m.homeTeam?.id ? (teamMap.get(m.homeTeam.id) ?? null) : null
+    const teamBId = m.awayTeam?.id ? (teamMap.get(m.awayTeam.id) ?? null) : null
+
+    const payload: Record<string, unknown> = {
       external_id: m.id,
       status: mappedStatus,
       stage: mappedStage,
@@ -82,6 +86,10 @@ Deno.serve(async () => {
       score_b: m.score?.fullTime?.away ?? null,
       winner_id: winnerId,
     }
+
+    // Fill in team IDs for knockout matches once teams are determined
+    if (teamAId) payload.team_a_id = teamAId
+    if (teamBId) payload.team_b_id = teamBId
 
     // Check current status to detect transition → FINISHED
     const { data: existing } = await supabase

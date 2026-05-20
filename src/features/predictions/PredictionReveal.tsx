@@ -84,14 +84,14 @@ export default function PredictionReveal({
                   : rank === 3 ? <span className="text-xl">🥉</span>
                   : <span className="text-xs font-black text-gray-500">#{rank}</span>
                 ) : (
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-black shadow-md ${
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-xl shadow-md ${
                     isBot
-                      ? 'bg-gradient-to-br from-purple-400 to-fuchsia-600 text-white ring-1 ring-purple-300/40'
+                      ? 'bg-gradient-to-br from-purple-500/30 to-fuchsia-600/30 ring-1 ring-purple-300/40'
                       : isMe
-                        ? 'bg-gradient-to-br from-emerald-400 to-emerald-600 text-white ring-2 ring-emerald-300/50'
-                        : 'bg-gradient-to-br from-slate-600 to-slate-700 text-gray-200'
+                        ? 'bg-gradient-to-br from-emerald-500/30 to-emerald-600/30 ring-2 ring-emerald-300/50'
+                        : 'bg-slate-700/60 border border-white/5'
                   }`}>
-                    {username.charAt(0).toUpperCase()}
+                    {p.profiles?.avatar || '⚽'}
                   </div>
                 )}
               </div>
