@@ -4,16 +4,14 @@ import { supabase } from '../../services/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import Spinner from '../../components/common/Spinner'
 import Hero from '../../components/common/Hero'
-import AvatarPicker from '../../components/common/AvatarPicker'
 import { he } from '../../i18n/he'
-import type { Match, Profile } from '../../types'
+import type { Match } from '../../types'
 
 export default function AdminPage() {
   const { profile, loading: authLoading } = useAuth()
   const navigate = useNavigate()
 
   const [matches, setMatches] = useState<Match[]>([])
-  const [profiles, setProfiles] = useState<Profile[]>([])
 
   // Score override
   const [selectedMatchId, setSelectedMatchId] = useState('')
@@ -28,14 +26,6 @@ export default function AdminPage() {
   const [addingEmail, setAddingEmail] = useState(false)
   const [emailMsg, setEmailMsg] = useState('')
 
-  // Username + avatar editor
-  const [selectedUserId, setSelectedUserId] = useState('')
-  const [newUsername, setNewUsername] = useState('')
-  const [newAvatar, setNewAvatar] = useState('⚽')
-  const [avatarOpen, setAvatarOpen] = useState(false)
-  const [savingName, setSavingName] = useState(false)
-  const [nameMsg, setNameMsg] = useState('')
-
   useEffect(() => {
     if (!authLoading && !profile?.is_admin) {
       navigate('/')
@@ -49,28 +39,9 @@ export default function AdminPage() {
       .order('start_time', { ascending: true })
       .then(({ data }) => setMatches(data ?? []))
 
-    loadProfiles()
   }, [])
 
-  async function loadProfiles() {
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .order('is_bot', { ascending: true })
-      .order('username')
-    setProfiles(data ?? [])
-  }
-
   const selectedMatch = matches.find(m => m.id === selectedMatchId)
-  const selectedUser = profiles.find(p => p.id === selectedUserId)
-
-  // When user is selected, prefill current name + avatar
-  useEffect(() => {
-    if (selectedUser) {
-      setNewUsername(selectedUser.username)
-      setNewAvatar(selectedUser.avatar || '⚽')
-    }
-  }, [selectedUserId])
 
   async function handleScoreOverride(e: FormEvent) {
     e.preventDefault()
@@ -138,28 +109,6 @@ export default function AdminPage() {
     }
   }
 
-  async function handleRenameUser(e: FormEvent) {
-    e.preventDefault()
-    if (!selectedUserId || !newUsername.trim()) return
-
-    const trimmed = newUsername.trim().slice(0, 30)
-    setSavingName(true)
-    setNameMsg('')
-
-    const { error } = await supabase
-      .from('profiles')
-      .update({ username: trimmed, avatar: newAvatar })
-      .eq('id', selectedUserId)
-
-    setSavingName(false)
-    if (error) {
-      setNameMsg(error.code === '23505' ? 'שם משתמש כבר תפוס' : `שגיאה: ${error.message}`)
-    } else {
-      setNameMsg(`✓ הפרופיל עודכן: ${newAvatar} ${trimmed}`)
-      await loadProfiles()
-    }
-  }
-
   if (authLoading) {
     return <div className="flex justify-center items-center min-h-screen"><Spinner size="lg" /></div>
   }
@@ -172,95 +121,11 @@ export default function AdminPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-black tracking-tight drop-shadow-lg">פאנל ניהול</h1>
-            <p className="text-gray-200 text-sm mt-1 font-medium drop-shadow">{profiles.length} משתמשים · {matches.length} משחקים</p>
+            <p className="text-gray-200 text-sm mt-1 font-medium drop-shadow">{matches.length} משחקים</p>
           </div>
           <span className="text-5xl animate-float drop-shadow-2xl">⚙️</span>
         </div>
       </Hero>
-
-      {/* Change username */}
-      <section className="glass-card rounded-2xl p-5 space-y-4 animate-fade-in-up" style={{ animationDelay: '0.05s' }}>
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold text-gray-200 uppercase tracking-wider flex items-center gap-2">
-            <span className="w-1 h-4 bg-purple-500 rounded-full shadow-[0_0_8px_rgba(168,85,247,0.5)]" />
-            שינוי שם משתמש
-          </h2>
-          <span className="text-xs text-gray-500">{profiles.length} משתמשים</span>
-        </div>
-
-        <form onSubmit={handleRenameUser} className="space-y-3">
-          <div>
-            <label className="block text-xs font-bold text-gray-400 mb-1.5 uppercase tracking-wider">בחר משתמש</label>
-            <select
-              value={selectedUserId}
-              onChange={e => setSelectedUserId(e.target.value)}
-              className="w-full bg-slate-800/60 border border-white/10 text-white rounded-xl px-3 py-2.5 text-right focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
-              required
-            >
-              <option value="">— בחר משתמש —</option>
-              {profiles.filter(p => !p.is_bot).length > 0 && (
-                <optgroup label="👥 חברים">
-                  {profiles.filter(p => !p.is_bot).map(p => (
-                    <option key={p.id} value={p.id}>{p.username} {p.is_admin && '👑'}</option>
-                  ))}
-                </optgroup>
-              )}
-              {profiles.filter(p => p.is_bot).length > 0 && (
-                <optgroup label="🤖 בוטים">
-                  {profiles.filter(p => p.is_bot).map(p => (
-                    <option key={p.id} value={p.id}>{p.username}</option>
-                  ))}
-                </optgroup>
-              )}
-            </select>
-          </div>
-
-          {selectedUserId && (
-            <>
-              <div className="animate-fade-in-up">
-                <label className="block text-xs font-bold text-gray-400 mb-1.5 uppercase tracking-wider">תמונת פרופיל</label>
-                <button
-                  type="button"
-                  onClick={() => setAvatarOpen(true)}
-                  className="w-full bg-slate-800/60 border border-white/10 rounded-xl px-3 py-2.5 flex items-center justify-between hover:border-purple-500/50 transition"
-                >
-                  <span className="text-xs text-gray-400">לחץ לבחירה</span>
-                  <span className="text-3xl">{newAvatar}</span>
-                </button>
-              </div>
-
-              <div className="animate-fade-in-up">
-                <label className="block text-xs font-bold text-gray-400 mb-1.5 uppercase tracking-wider">שם חדש</label>
-                <input
-                  type="text"
-                  value={newUsername}
-                  onChange={e => setNewUsername(e.target.value)}
-                  className="w-full bg-slate-800/60 border border-white/10 text-white rounded-xl px-3 py-2.5 text-right focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
-                  placeholder="לדוגמה: יוסי 🇮🇱"
-                  maxLength={30}
-                  required
-                />
-              </div>
-            </>
-          )}
-
-          {nameMsg && (
-            <p className={`text-sm rounded-xl px-3 py-2 ${
-              nameMsg.startsWith('✓')
-                ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-300'
-                : 'bg-red-500/15 border border-red-500/30 text-red-300'
-            }`}>{nameMsg}</p>
-          )}
-
-          <button
-            type="submit"
-            disabled={savingName || !selectedUserId}
-            className="w-full bg-gradient-to-r from-purple-500 to-fuchsia-500 hover:from-purple-400 hover:to-fuchsia-400 text-white font-black py-3 rounded-xl transition-all disabled:opacity-50 shadow-lg shadow-purple-500/30 active:scale-[0.98]"
-          >
-            {savingName ? he.loading : 'עדכן שם משתמש'}
-          </button>
-        </form>
-      </section>
 
       {/* Score Override */}
       <section className="glass-card rounded-2xl p-5 space-y-4 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
@@ -416,13 +281,6 @@ export default function AdminPage() {
         )}
       </section>
 
-      {avatarOpen && (
-        <AvatarPicker
-          current={newAvatar}
-          onSelect={emoji => { setNewAvatar(emoji); setAvatarOpen(false) }}
-          onClose={() => setAvatarOpen(false)}
-        />
-      )}
     </div>
   )
 }
