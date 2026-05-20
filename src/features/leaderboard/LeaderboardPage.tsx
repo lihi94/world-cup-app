@@ -159,6 +159,13 @@ export default function LeaderboardPage() {
         <LegendItem icon="✗" label="טעות" color="text-red-400" />
       </div>
 
+      <div className="glass-card rounded-xl px-4 py-3 space-y-1.5 text-center animate-fade-in-up" style={{ animationDelay: '0.45s' }}>
+        <p className="text-[10px] text-gray-300 font-bold uppercase tracking-wider">חוקי שובר שוויון</p>
+        <p className="text-xs text-gray-400 leading-relaxed">
+          בתיקו בנקודות, מי שיש לו <span className="text-emerald-400 font-bold">יותר ניחושים מדויקים 🎯</span> מקבל את המקום הגבוה יותר
+        </p>
+      </div>
+
       <p className="text-xs text-gray-500 text-center flex items-center justify-center gap-1">
         <span className="animate-pulse">⚡</span>
         מתעדכן בזמן אמת לאחר כל משחק
