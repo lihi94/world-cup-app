@@ -16,7 +16,7 @@ loadDotEnv(join(__dirname, '..', '.env.local'))
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY
 
-// 20 top-scorer candidates ranked by current betting odds (foxsports/rotowire).
+// 30 top-scorer candidates ranked by current betting odds (foxsports/rotowire).
 // `team` matches one of the team names already in our DB (English).
 // If a team didn't qualify for WC 2026 the entry is silently skipped.
 const CANDIDATES = [
@@ -40,6 +40,16 @@ const CANDIDATES = [
   { name: 'Bukayo Saka',       name_he: 'בוקאיו סאקה',       team: 'England' },       // +4000
   { name: 'Memphis Depay',     name_he: 'ממפיס דפאי',         team: 'Netherlands' },   // +4000
   { name: 'Álvaro Morata',     name_he: 'אלברו מוראטה',     team: 'Spain' },         // +4000-5000
+  { name: 'João Pedro',        name_he: 'ז׳ואאו פדרו',       team: 'Brazil' },        // +5000
+  { name: 'Neymar',            name_he: 'ניימאר',             team: 'Brazil' },        // +5000
+  { name: 'Jude Bellingham',   name_he: 'ג׳וד בלינגהאם',     team: 'England' },       // +5000
+  { name: 'Cole Palmer',       name_he: 'קול פאלמר',          team: 'England' },       // +5000
+  { name: 'Florian Wirtz',     name_he: 'פלוריאן ויירץ',     team: 'Germany' },       // +5000
+  { name: 'Marcus Thuram',     name_he: 'מרקוס תוראם',       team: 'France' },        // +5000
+  { name: 'Gonçalo Ramos',     name_he: 'גונסאלו ראמוס',     team: 'Portugal' },      // +5000
+  { name: 'Bruno Fernandes',   name_he: 'ברונו פרננדס',      team: 'Portugal' },      // +5000
+  { name: 'Luis Díaz',         name_he: 'לואיס דיאז',        team: 'Colombia' },      // +5000
+  { name: 'Mohamed Salah',     name_he: 'מוחמד סלאח',        team: 'Egypt' },         // +5000
 ]
 
 async function sb(path, options = {}) {
