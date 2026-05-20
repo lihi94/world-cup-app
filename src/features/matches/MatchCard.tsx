@@ -80,6 +80,34 @@ export default function MatchCard({ match, myPrediction }: MatchCardProps) {
         <TeamDisplay name={teamB?.name_he ?? teamB?.name ?? '?'} crest={teamB?.crest_url} />
       </div>
 
+      {/* AI odds bar (only when match is scheduled and odds exist) */}
+      {isScheduled && match.odds_a !== null && match.odds_b !== null && match.odds_draw !== null && (
+        <div className="mt-3">
+          <div className="flex items-center justify-between text-[10px] font-bold mb-1 px-0.5">
+            <span className="flex items-center gap-1 text-emerald-300">
+              <span className="text-sm">🇦</span>
+              {match.odds_a}%
+            </span>
+            <span className="text-gray-400 flex items-center gap-1">
+              <span className="text-xs">✨</span>
+              סיכויי A.I
+            </span>
+            <span className="flex items-center gap-1 text-blue-300">
+              {match.odds_b}%
+              <span className="text-sm">🇧</span>
+            </span>
+          </div>
+          <div className="h-1.5 w-full rounded-full overflow-hidden flex bg-slate-700/40">
+            <div className="bg-emerald-500/80 transition-all" style={{ width: `${match.odds_a}%` }} />
+            <div className="bg-amber-500/70 transition-all" style={{ width: `${match.odds_draw}%` }} />
+            <div className="bg-blue-500/80 transition-all" style={{ width: `${match.odds_b}%` }} />
+          </div>
+          <div className="flex items-center justify-center gap-0.5 mt-0.5 text-[9px] text-amber-300/80 font-medium">
+            <span>תיקו {match.odds_draw}%</span>
+          </div>
+        </div>
+      )}
+
       {/* Bottom: prediction status */}
       <div className="mt-3 pt-3 border-t border-white/5">
         {myPrediction ? (

@@ -54,6 +54,12 @@ export interface Match {
   score_b: number | null
   winner_id: string | null
   updated_at: string
+  // AI-computed odds (0-100 each, ~sum to 100)
+  odds_a: number | null
+  odds_draw: number | null
+  odds_b: number | null
+  odds_source: string | null
+  odds_updated_at: string | null
   // Joined
   team_a?: Team
   team_b?: Team
