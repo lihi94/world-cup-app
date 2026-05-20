@@ -5,7 +5,8 @@ import MatchCard from './MatchCard'
 import Spinner from '../../components/common/Spinner'
 import Hero from '../../components/common/Hero'
 import WorldCupLogo from '../../components/common/WorldCupLogo'
-import AvatarPicker from '../../components/common/AvatarPicker'
+import ProfileEditor from '../../components/common/ProfileEditor'
+import { displayName } from '../../types'
 import { formatDateHeader, dateKey } from '../../utils/date'
 import { he } from '../../i18n/he'
 import type { Match, Prediction } from '../../types'
@@ -23,13 +24,17 @@ export default function Dashboard() {
   const [myPredictions, setMyPredictions] = useState<Map<string, Prediction>>(new Map())
   const [loading, setLoading] = useState(true)
   const [showLocked, setShowLocked] = useState(false)
-  const [avatarOpen, setAvatarOpen] = useState(false)
+  const [profileOpen, setProfileOpen] = useState(false)
 
-  async function updateAvatar(emoji: string) {
-    if (!user) return
-    await supabase.from('profiles').update({ avatar: emoji }).eq('id', user.id)
-    setAvatarOpen(false)
+  async function updateProfile(nickname: string, avatar: string) {
+    if (!user) return { error: 'לא מחובר' }
+    const { error } = await supabase
+      .from('profiles')
+      .update({ nickname: nickname.trim() || null, avatar })
+      .eq('id', user.id)
+    if (error) return { error: error.message }
     reloadProfile?.()
+    return { error: null }
   }
 
   useEffect(() => {
@@ -115,20 +120,25 @@ export default function Dashboard() {
         </div>
 
         <div className="flex items-end justify-between mt-auto gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <button
-              onClick={() => setAvatarOpen(true)}
-              className="text-4xl bg-black/30 hover:bg-black/50 backdrop-blur-sm w-14 h-14 rounded-2xl flex items-center justify-center transition border border-white/15 shrink-0 active:scale-95"
-              aria-label="שנה תמונת פרופיל"
-              title="שנה תמונת פרופיל"
-            >
+          <button
+            onClick={() => setProfileOpen(true)}
+            className="flex items-center gap-3 min-w-0 text-right group"
+            aria-label="ערוך פרופיל"
+          >
+            <span className="text-4xl bg-black/30 group-hover:bg-black/50 backdrop-blur-sm w-14 h-14 rounded-2xl flex items-center justify-center transition border border-white/15 shrink-0 group-active:scale-95">
               {profile?.avatar || '⚽'}
-            </button>
+            </span>
             <div className="min-w-0">
               <p className="text-emerald-200/90 text-sm font-medium">שלום 👋</p>
-              <h1 className="text-2xl font-black mt-0.5 leading-tight drop-shadow-lg truncate">{profile?.username}</h1>
+              <h1 className="text-2xl font-black mt-0.5 leading-tight drop-shadow-lg truncate flex items-center gap-1">
+                {displayName(profile)}
+                <span className="text-xs text-emerald-200/60 opacity-0 group-hover:opacity-100 transition">✏️</span>
+              </h1>
+              {profile?.nickname && (
+                <p className="text-[11px] text-emerald-200/70 font-medium leading-none mt-0.5">@{profile.username}</p>
+              )}
             </div>
-          </div>
+          </button>
         </div>
 
         <div className="flex items-center gap-2 mt-4">
@@ -243,11 +253,12 @@ export default function Dashboard() {
         </section>
       )}
 
-      {avatarOpen && (
-        <AvatarPicker
-          current={profile?.avatar || '⚽'}
-          onSelect={updateAvatar}
-          onClose={() => setAvatarOpen(false)}
+      {profileOpen && (
+        <ProfileEditor
+          currentName={profile?.nickname || ''}
+          currentAvatar={profile?.avatar || '⚽'}
+          onSave={updateProfile}
+          onClose={() => setProfileOpen(false)}
         />
       )}
     </div>

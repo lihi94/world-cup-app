@@ -20,11 +20,18 @@ export interface Player {
 
 export interface Profile {
   id: string
-  username: string
+  username: string         // admin-controlled, immutable identifier
+  nickname: string | null  // user-controlled display name
   total_points: number
   is_admin: boolean
   is_bot: boolean
   avatar: string
+}
+
+/** Display name: nickname if set, otherwise fall back to username. */
+export function displayName(p: Pick<Profile, 'username' | 'nickname'> | null | undefined): string {
+  if (!p) return '—'
+  return p.nickname?.trim() || p.username
 }
 
 export interface LeaderboardStats {

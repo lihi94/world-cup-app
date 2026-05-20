@@ -18,7 +18,7 @@ export function usePredictions(matchId: string, userId: string | undefined) {
     // Fetch all visible predictions for this match (RLS handles visibility)
     const { data } = await supabase
       .from('predictions')
-      .select('*, profiles(username, total_points, is_bot), teams!pred_qualifier_id(name, name_he, crest_url)')
+      .select('*, profiles(username, nickname, total_points, is_bot, avatar), teams!pred_qualifier_id(name, name_he, crest_url)')
       .eq('match_id', matchId)
 
     const preds = data ?? []

@@ -33,12 +33,8 @@ export default function ProfileEditor({ currentName, currentAvatar, onSave, onCl
 
   async function handleSave() {
     const trimmed = name.trim()
-    if (!trimmed) {
-      setError('שם משתמש לא יכול להיות ריק')
-      return
-    }
     if (trimmed.length > 30) {
-      setError('שם משתמש מקסימום 30 תווים')
+      setError('כינוי מקסימום 30 תווים')
       return
     }
     setSaving(true)
@@ -52,7 +48,7 @@ export default function ProfileEditor({ currentName, currentAvatar, onSave, onCl
     }
   }
 
-  const hasChanges = name.trim() !== currentName || avatar !== currentAvatar
+  const hasChanges = name.trim() !== currentName.trim() || avatar !== currentAvatar
 
   return (
     <div
@@ -84,20 +80,23 @@ export default function ProfileEditor({ currentName, currentAvatar, onSave, onCl
           </div>
         </div>
 
-        {/* Name input */}
+        {/* Nickname input */}
         <div className="px-4 py-3 border-b border-white/5">
           <label className="block text-xs font-bold text-gray-400 mb-1.5 uppercase tracking-wider">
-            שם תצוגה
+            כינוי <span className="text-gray-500 normal-case font-normal">(אופציונלי)</span>
           </label>
           <input
             type="text"
             value={name}
             onChange={e => setName(e.target.value)}
             className="w-full bg-slate-800/60 border border-white/10 text-white rounded-xl px-3 py-2.5 text-right focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
-            placeholder="לדוגמה: יוסי הסיני 🇮🇱"
+            placeholder='לדוגמה: "מלך הקלוד" 👑'
             maxLength={30}
             autoFocus
           />
+          <p className="text-[10px] text-gray-500 mt-1.5 leading-snug">
+            השם הזה יוצג ליד שם המשתמש שלך. השאר ריק להחזרה לברירת המחדל.
+          </p>
         </div>
 
         {/* Avatar grid */}

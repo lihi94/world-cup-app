@@ -6,16 +6,22 @@ import Spinner from '../../components/common/Spinner'
 import Hero from '../../components/common/Hero'
 import { formatKickoff } from '../../utils/date'
 import { he } from '../../i18n/he'
-import type { Match, Prediction } from '../../types'
+import { displayName, type Match, type Prediction } from '../../types'
 
 type Tab = 'finished' | 'live' | 'upcoming'
 
 type PredictionWithProfile = Prediction & {
-  profiles?: { username: string; total_points: number; is_bot: boolean }
+  profiles?: {
+    username: string
+    nickname: string | null
+    total_points: number
+    is_bot: boolean
+    avatar?: string
+  }
 }
 
 const STAGE_LABELS: Record<string, string> = {
-  GROUP: he.GROUP, R32: he.R32, R16: he.R16, QF: he.QF, SF: he.SF, FINAL: he.FINAL,
+  GROUP: he.GROUP, R32: he.R32, R16: he.R16, QF: he.QF, SF: he.SF, THIRD: he.THIRD, FINAL: he.FINAL,
 }
 
 export default function PredictionsFeedPage() {
@@ -57,7 +63,7 @@ export default function PredictionsFeedPage() {
       const ids = ms.map(m => m.id)
       const { data: preds } = await supabase
         .from('predictions')
-        .select('*, profiles(username, total_points, is_bot)')
+        .select('*, profiles(username, nickname, total_points, is_bot, avatar)')
         .in('match_id', ids)
 
       const grouped = new Map<string, PredictionWithProfile[]>()
@@ -240,7 +246,9 @@ function PredRow({
 }: {
   pred: PredictionWithProfile; isMe: boolean; isFinished: boolean; rank?: number
 }) {
+  const nameToShow = displayName(pred.profiles)
   const username = pred.profiles?.username ?? '—'
+  const hasNickname = !!pred.profiles?.nickname && !pred.profiles?.is_bot
   return (
     <div className={`flex items-center gap-2 rounded-lg px-2 py-1.5 ${isMe ? 'bg-emerald-500/10 ring-1 ring-emerald-500/30' : ''}`}>
       {rank !== undefined && (
@@ -248,9 +256,12 @@ function PredRow({
           {rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : <span className="text-gray-500">#{rank}</span>}
         </span>
       )}
-      <span className={`text-xs font-bold flex-1 truncate ${isMe ? 'text-emerald-300' : 'text-gray-200'}`}>
-        {username}
-        {isMe && <span className="text-[9px] text-emerald-400 mr-1">• אני</span>}
+      <span className={`text-xs font-bold flex-1 min-w-0 ${isMe ? 'text-emerald-300' : 'text-gray-200'}`}>
+        <span className="truncate block">
+          {nameToShow}
+          {isMe && <span className="text-[9px] text-emerald-400 mr-1">• אני</span>}
+          {hasNickname && <span className="text-[9px] text-gray-500 mr-1 font-normal">@{username}</span>}
+        </span>
       </span>
       <span className="text-xs font-black text-gray-100 bg-white/5 border border-white/10 px-2 py-0.5 rounded tabular-nums">
         {pred.pred_score_a ?? '?'}–{pred.pred_score_b ?? '?'}

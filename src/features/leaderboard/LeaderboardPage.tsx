@@ -2,6 +2,7 @@ import { useLeaderboard } from '../../hooks/useLeaderboard'
 import { useAuth } from '../../hooks/useAuth'
 import Spinner from '../../components/common/Spinner'
 import Hero from '../../components/common/Hero'
+import { displayName } from '../../types'
 
 const MEDALS = ['🥇', '🥈', '🥉']
 
@@ -56,7 +57,7 @@ export default function LeaderboardPage() {
                 }`}>
                   <span className="text-3xl mb-1 drop-shadow">{profile?.avatar || '⚽'}</span>
                   <p className="text-[10px] font-black text-white text-center leading-tight drop-shadow line-clamp-1">
-                    {profile?.username ?? '—'}
+                    {displayName(profile)}
                   </p>
                   <p className="text-xl font-black text-white drop-shadow leading-none mt-1">
                     {profile?.total_points ?? 0}
@@ -118,9 +119,12 @@ export default function LeaderboardPage() {
                   </span>
                   <div className="min-w-0">
                     <p className={`font-bold text-sm truncate ${isMe ? 'text-emerald-300' : 'text-gray-100'}`}>
-                      {profile.username}
+                      {displayName(profile)}
+                      {isMe && <span className="text-[9px] text-emerald-400 mr-1 font-bold">• אני</span>}
                     </p>
-                    {isMe && <p className="text-[9px] text-emerald-400 font-bold leading-none">• אני</p>}
+                    {profile.nickname && (
+                      <p className="text-[10px] text-gray-500 font-medium leading-none mt-0.5 truncate">@{profile.username}</p>
+                    )}
                   </div>
                 </div>
 

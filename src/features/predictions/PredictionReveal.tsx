@@ -1,4 +1,4 @@
-import type { Match, Prediction } from '../../types'
+import { displayName, type Match, type Prediction } from '../../types'
 
 interface PredictionRevealProps {
   match: Match
@@ -11,7 +11,13 @@ interface PredictionRevealProps {
 }
 
 type PredictionRow = Prediction & {
-  profiles?: { username: string; total_points: number; is_bot: boolean }
+  profiles?: {
+    username: string
+    nickname: string | null
+    total_points: number
+    is_bot: boolean
+    avatar?: string
+  }
 }
 
 export default function PredictionReveal({
@@ -59,6 +65,7 @@ export default function PredictionReveal({
           const p = pred as PredictionRow
           const isMe = pred.user_id === currentUserId
           const isBot = p.profiles?.is_bot
+          const nameToShow = displayName(p.profiles)
           const username = p.profiles?.username ?? '—'
           const rank = isFinished ? i + 1 : null
 
@@ -94,9 +101,12 @@ export default function PredictionReveal({
                 <p className={`font-bold text-sm truncate ${
                   isMe ? 'text-emerald-300' : isBot ? 'text-purple-200' : 'text-gray-200'
                 }`}>
-                  {username}
+                  {nameToShow}
                   {isMe && <span className="text-[10px] text-emerald-400 mr-1.5 font-bold">• אני</span>}
                 </p>
+                {p.profiles?.nickname && !isBot && (
+                  <p className="text-[10px] text-gray-500 leading-none mt-0.5 truncate">@{username}</p>
+                )}
               </div>
 
               {/* Score prediction */}
