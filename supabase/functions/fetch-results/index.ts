@@ -1,21 +1,10 @@
 // fetch-results/index.ts
 // Supabase Edge Function — called by pg_cron every 15 minutes.
 //
-// Setup cron (run once in Supabase SQL Editor after deploying this function):
-//   SELECT cron.schedule(
-//     'fetch-match-results',
-//     '*/15 * * * *',
-//     $$
-//       SELECT net.http_post(
-//         url := 'https://YOUR_PROJECT_REF.supabase.co/functions/v1/fetch-results',
-//         body := '{}'::jsonb,
-//         headers := jsonb_build_object(
-//           'Content-Type', 'application/json',
-//           'Authorization', 'Bearer YOUR_SERVICE_ROLE_KEY'
-//         )
-//       )
-//     $$
-//   );
+// Cron is LIVE — runs every 15 minutes via pg_cron (job id 2).
+// To inspect: SELECT jobid, jobname, schedule, active FROM cron.job;
+// To pause:   SELECT cron.unschedule('fetch-match-results');
+// To resume:  re-run the SELECT cron.schedule(...) in the Supabase SQL editor.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
