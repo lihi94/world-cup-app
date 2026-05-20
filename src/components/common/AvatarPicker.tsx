@@ -33,7 +33,7 @@ export default function AvatarPicker({ current, onSelect, onClose }: AvatarPicke
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in-up"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in-up"
       onClick={onClose}
     >
       <div
