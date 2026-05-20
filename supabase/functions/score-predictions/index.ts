@@ -33,7 +33,7 @@ function calculatePoints(
     pts = isExact ? 5 : isCorrectDir ? 4 : 0
     if (winnerId && predQualId === winnerId) pts += 1
   } else {
-    // R32, R16, QF, SF
+    // R32, R16, QF, SF, THIRD — all knockout (non-final)
     pts = isExact ? 4 : isCorrectDir ? 3 : 0
     if (winnerId && predQualId === winnerId) pts += 1
   }

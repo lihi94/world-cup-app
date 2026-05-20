@@ -38,9 +38,12 @@ const STATUS_MAP: Record<string, string> = {
 
 const STAGE_MAP: Record<string, string> = {
   'GROUP_STAGE': 'GROUP',
+  'ROUND_OF_32': 'R32',        // 2026 WC — new stage with 48 teams
   'ROUND_OF_16': 'R16',
   'QUARTER_FINALS': 'QF',
   'SEMI_FINALS': 'SF',
+  'THIRD_PLACE': 'THIRD',      // football-data.org name for 3rd-place playoff
+  'THIRD_PLACE_PLAY_OFF': 'THIRD', // alternate spelling some competitions use
   'FINAL': 'FINAL',
 }
 
