@@ -16,30 +16,30 @@ loadDotEnv(join(__dirname, '..', '.env.local'))
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY
 
-// 20 reasonable top-scorer candidates. Order by rough betting-odds favoritism.
+// 20 top-scorer candidates ranked by current betting odds (foxsports/rotowire).
 // `team` matches one of the team names already in our DB (English).
 // If a team didn't qualify for WC 2026 the entry is silently skipped.
 const CANDIDATES = [
-  { name: 'Kylian Mbappé',    name_he: 'קיליאן אמבפה',     team: 'France' },
-  { name: 'Harry Kane',       name_he: 'הארי קיין',         team: 'England' },
-  { name: 'Erling Haaland',   name_he: 'ארלינג הולאנד',     team: 'Norway' },
-  { name: 'Lionel Messi',     name_he: 'ליונל מסי',          team: 'Argentina' },
-  { name: 'Vinícius Júnior',  name_he: 'ויניסיוס ג׳וניור',  team: 'Brazil' },
-  { name: 'Lautaro Martínez', name_he: 'לאוטרו מרטינס',    team: 'Argentina' },
-  { name: 'Cristiano Ronaldo',name_he: 'כריסטיאנו רונאלדו', team: 'Portugal' },
-  { name: 'Jude Bellingham',  name_he: 'ג׳וד בלינגהאם',     team: 'England' },
-  { name: 'Julián Álvarez',   name_he: 'חוליאן אלברס',     team: 'Argentina' },
-  { name: 'Raphinha',         name_he: 'רפיניה',            team: 'Brazil' },
-  { name: 'Bukayo Saka',      name_he: 'בוקאיו סאקה',       team: 'England' },
-  { name: 'Phil Foden',       name_he: 'פיל פודן',           team: 'England' },
-  { name: 'Antoine Griezmann',name_he: 'אנטואן גריזמן',     team: 'France' },
-  { name: 'Romelu Lukaku',    name_he: 'רומלו לוקאקו',      team: 'Belgium' },
-  { name: 'Robert Lewandowski', name_he: 'רוברט לבנדובסקי', team: 'Poland' },
-  { name: 'Memphis Depay',    name_he: 'ממפיס דפאי',         team: 'Netherlands' },
-  { name: 'Cody Gakpo',       name_he: 'קודי חאקפו',        team: 'Netherlands' },
-  { name: 'Jamal Musiala',    name_he: 'ג׳מאל מוסיאלה',     team: 'Germany' },
-  { name: 'Bruno Fernandes',  name_he: 'ברונו פרננדס',      team: 'Portugal' },
-  { name: 'Rodrygo',          name_he: 'רודריגו',           team: 'Brazil' },
+  { name: 'Kylian Mbappé',     name_he: 'קיליאן אמבפה',     team: 'France' },        // +600
+  { name: 'Harry Kane',        name_he: 'הארי קיין',         team: 'England' },       // +700
+  { name: 'Lionel Messi',      name_he: 'ליונל מסי',          team: 'Argentina' },     // +1200
+  { name: 'Erling Haaland',    name_he: 'ארלינג הולאנד',     team: 'Norway' },        // +1400
+  { name: 'Lamine Yamal',      name_he: 'לאמין יאמאל',       team: 'Spain' },         // +1800
+  { name: 'Mikel Oyarzabal',   name_he: 'מיקל אויארסבאל',    team: 'Spain' },         // +1800
+  { name: 'Cristiano Ronaldo', name_he: 'כריסטיאנו רונאלדו', team: 'Portugal' },      // +2000
+  { name: 'Vinícius Júnior',   name_he: 'ויניסיוס ג׳וניור',  team: 'Brazil' },        // +2200
+  { name: 'Lautaro Martínez',  name_he: 'לאוטרו מרטינס',    team: 'Argentina' },     // +2500
+  { name: 'Ousmane Dembélé',   name_he: 'אוסמן דמבלה',       team: 'France' },        // +2800
+  { name: 'Romelu Lukaku',     name_he: 'רומלו לוקאקו',      team: 'Belgium' },       // +3000
+  { name: 'Raphinha',          name_he: 'רפיניה',            team: 'Brazil' },        // +3000
+  { name: 'Julián Álvarez',    name_he: 'חוליאן אלברס',     team: 'Argentina' },     // +3500
+  { name: 'Richarlison',       name_he: 'ריצ׳רליסון',        team: 'Brazil' },        // +3500
+  { name: 'Nick Woltemade',    name_he: 'ניק וולטמדה',       team: 'Germany' },       // +3500
+  { name: 'Cody Gakpo',        name_he: 'קודי חאקפו',        team: 'Netherlands' },   // +4000
+  { name: 'Ferran Torres',     name_he: 'פראן טורס',          team: 'Spain' },         // +4000
+  { name: 'Bukayo Saka',       name_he: 'בוקאיו סאקה',       team: 'England' },       // +4000
+  { name: 'Memphis Depay',     name_he: 'ממפיס דפאי',         team: 'Netherlands' },   // +4000
+  { name: 'Álvaro Morata',     name_he: 'אלברו מוראטה',     team: 'Spain' },         // +4000-5000
 ]
 
 async function sb(path, options = {}) {
