@@ -28,11 +28,21 @@ export default function MatchCard({ match, myPrediction }: MatchCardProps) {
   const teamB = match.team_b
   const isFinished = match.status === 'FINISHED'
   const isLive = match.status === 'IN_PLAY'
+  const isScheduled = match.status === 'SCHEDULED'
+  const hasPrediction = !!myPrediction && myPrediction.pred_score_a !== null && myPrediction.pred_score_b !== null
+  const needsPrediction = isScheduled && open && !hasPrediction
+
+  // Predicted-state styling: subtle emerald tint + ring
+  const cardClass = hasPrediction && isScheduled
+    ? 'block rounded-2xl p-4 bg-gradient-to-br from-emerald-500/12 via-emerald-500/[0.06] to-transparent border border-emerald-500/40 shadow-lg shadow-emerald-500/10 hover:border-emerald-400/60 active:scale-[0.98] transition-all'
+    : needsPrediction
+      ? 'block rounded-2xl p-4 bg-gradient-to-br from-amber-500/10 via-amber-500/[0.04] to-transparent border border-amber-500/40 shadow-lg shadow-amber-500/10 hover:border-amber-400/60 active:scale-[0.98] transition-all'
+      : 'block glass-card rounded-2xl p-4 hover:border-emerald-500/40 hover:shadow-lg hover:shadow-emerald-500/10 active:scale-[0.98] transition-all'
 
   return (
     <Link
       to={`/matches/${match.id}`}
-      className="block glass-card rounded-2xl p-4 hover:border-emerald-500/40 hover:shadow-lg hover:shadow-emerald-500/10 active:scale-[0.98] transition-all"
+      className={cardClass}
     >
       {/* Top row: stage + time/live */}
       <div className="flex items-center justify-between mb-3">
@@ -74,9 +84,11 @@ export default function MatchCard({ match, myPrediction }: MatchCardProps) {
       <div className="mt-3 pt-3 border-t border-white/5">
         {myPrediction ? (
           <div className="flex items-center justify-between">
-            <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">הניחוש שלי</span>
+            <span className="text-[10px] text-emerald-400 uppercase tracking-wider font-black flex items-center gap-1">
+              <span className="text-sm">✓</span> ניחשת
+            </span>
             <div className="flex items-center gap-2">
-              <span className="text-sm font-black text-gray-100 bg-white/5 border border-white/10 px-2.5 py-0.5 rounded-lg">
+              <span className="text-sm font-black text-emerald-200 bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 rounded-lg tabular-nums">
                 {myPrediction.pred_score_a} – {myPrediction.pred_score_b}
               </span>
               {isFinished && (

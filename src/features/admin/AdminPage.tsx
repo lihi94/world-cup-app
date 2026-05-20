@@ -345,6 +345,43 @@ export default function AdminPage() {
         </form>
       </section>
 
+      {/* Rules & Scoring */}
+      <section className="glass-card rounded-2xl p-5 space-y-3 animate-fade-in-up" style={{ animationDelay: '0.12s' }}>
+        <h2 className="text-sm font-bold text-gray-200 uppercase tracking-wider flex items-center gap-2">
+          <span className="w-1 h-4 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
+          חוקי הניקוד
+        </h2>
+
+        <div className="space-y-2">
+          <RuleRow stage="GROUP" label="שלב הבתים" exact="3" dir="2" bonus="—" />
+          <RuleRow stage="R32" label="שלב ה-32" exact="4" dir="3" bonus="+1 על קבוצה עולה" />
+          <RuleRow stage="R16" label="שמינית גמר" exact="4" dir="3" bonus="+1 על קבוצה עולה" />
+          <RuleRow stage="QF" label="רבע גמר" exact="4" dir="3" bonus="+1 על קבוצה עולה" />
+          <RuleRow stage="SF" label="חצי גמר" exact="4" dir="3" bonus="+1 על קבוצה עולה" />
+          <RuleRow stage="THIRD" label="מקום שלישי" exact="4" dir="3" bonus="+1 על קבוצה עולה" />
+          <RuleRow stage="FINAL" label="גמר" exact="5" dir="4" bonus="+1 על אלוף" />
+        </div>
+
+        <div className="pt-2 border-t border-white/5 space-y-1.5 text-xs text-gray-400">
+          <p className="flex items-center gap-1.5">
+            <span className="text-amber-400 text-base">🏆</span>
+            <span><strong className="text-amber-300">+8</strong> אלוף הטורניר (הימור זהב)</span>
+          </p>
+          <p className="flex items-center gap-1.5">
+            <span className="text-amber-400 text-base">👟</span>
+            <span><strong className="text-amber-300">+8</strong> מלך השערים (הימור זהב)</span>
+          </p>
+          <p className="flex items-center gap-1.5">
+            <span className="text-emerald-400 text-base">🎯</span>
+            <span>שובר שוויון: יותר ניחושים מדויקים מנצח</span>
+          </p>
+          <p className="flex items-center gap-1.5">
+            <span className="text-blue-400 text-base">🎲</span>
+            <span>לא ניחשת? המערכת תיצור ניחוש רנדומלי בתחילת המשחק</span>
+          </p>
+        </div>
+      </section>
+
       {/* Add Email to Allowlist */}
       <section className="glass-card rounded-2xl p-5 space-y-3 animate-fade-in-up" style={{ animationDelay: '0.15s' }}>
         <h2 className="text-sm font-bold text-gray-200 uppercase tracking-wider flex items-center gap-2">
@@ -386,6 +423,44 @@ export default function AdminPage() {
           onClose={() => setAvatarOpen(false)}
         />
       )}
+    </div>
+  )
+}
+
+function RuleRow({ stage, label, exact, dir, bonus }: {
+  stage: string; label: string; exact: string; dir: string; bonus: string
+}) {
+  const STAGE_COLORS: Record<string, string> = {
+    GROUP: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
+    R32:   'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
+    R16:   'bg-purple-500/20 text-purple-300 border-purple-500/30',
+    QF:    'bg-amber-500/20 text-amber-300 border-amber-500/30',
+    SF:    'bg-orange-500/20 text-orange-300 border-orange-500/30',
+    THIRD: 'bg-pink-500/20 text-pink-300 border-pink-500/30',
+    FINAL: 'bg-red-500/20 text-red-300 border-red-500/30',
+  }
+  return (
+    <div className="flex items-center gap-2 text-xs">
+      <span className={`px-2 py-0.5 rounded-full border font-bold whitespace-nowrap ${STAGE_COLORS[stage]}`}>
+        {label}
+      </span>
+      <div className="flex items-center gap-1.5 text-gray-300 mr-auto">
+        <span className="flex items-center gap-0.5">
+          <span className="text-emerald-400">🎯</span>
+          <strong className="text-white">{exact}</strong>
+        </span>
+        <span className="text-gray-600">·</span>
+        <span className="flex items-center gap-0.5">
+          <span className="text-blue-400">↗</span>
+          <strong className="text-white">{dir}</strong>
+        </span>
+        {bonus !== '—' && (
+          <>
+            <span className="text-gray-600">·</span>
+            <span className="text-amber-300 text-[10px] whitespace-nowrap">{bonus}</span>
+          </>
+        )}
+      </div>
     </div>
   )
 }

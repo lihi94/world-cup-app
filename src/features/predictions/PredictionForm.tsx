@@ -61,11 +61,11 @@ export default function PredictionForm({ match, existing, onSave }: PredictionFo
 
   if (!open) {
     return (
-      <div className="bg-gray-50 rounded-xl p-4 text-center">
-        <span className="text-gray-500 font-medium">🔒 {he.locked}</span>
+      <div className="glass-card rounded-2xl p-5 text-center space-y-2">
+        <span className="text-gray-300 font-bold text-base">🔒 {he.locked}</span>
         {existing && (
           <p className="text-sm text-gray-400 mt-1">
-            ניחושך: {existing.pred_score_a} – {existing.pred_score_b}
+            ניחושך: <span className="font-black text-white">{existing.pred_score_a} – {existing.pred_score_b}</span>
           </p>
         )}
       </div>
@@ -73,15 +73,18 @@ export default function PredictionForm({ match, existing, onSave }: PredictionFo
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
-      <p className="text-xs text-amber-600 font-medium">{locksInLabel(match.start_time)}</p>
+    <div className="glass-card rounded-2xl border border-emerald-500/20 p-5 space-y-4">
+      <p className="text-xs text-amber-400 font-bold flex items-center gap-1.5">
+        <span className="animate-pulse">⏳</span>
+        {locksInLabel(match.start_time)}
+      </p>
 
       <div className="flex items-center gap-3 justify-center">
         <TeamCrest team={match.team_a} />
-        <div className="flex items-center gap-2">
-          <ScoreInput value={scoreA} onChange={setScoreA} />
-          <span className="text-gray-400 font-bold">–</span>
-          <ScoreInput value={scoreB} onChange={setScoreB} />
+        <div className="flex items-center gap-3">
+          <ScoreStepper value={scoreA} onChange={setScoreA} />
+          <span className="text-gray-500 font-black text-2xl">–</span>
+          <ScoreStepper value={scoreB} onChange={setScoreB} />
         </div>
         <TeamCrest team={match.team_b} />
       </div>
@@ -95,18 +98,64 @@ export default function PredictionForm({ match, existing, onSave }: PredictionFo
         />
       )}
 
-      {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+      {error && (
+        <p className="bg-red-500/15 border border-red-500/30 text-red-300 rounded-xl px-3 py-2 text-sm text-center font-medium">
+          {error}
+        </p>
+      )}
 
       <button
         onClick={handleSubmit}
         disabled={saving}
-        className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 rounded-lg transition disabled:opacity-60"
+        className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-black py-3.5 rounded-xl transition-all disabled:opacity-50 shadow-lg shadow-emerald-500/30 active:scale-[0.98]"
       >
-        {saved ? `✓ ${he.saved}` : saving ? he.loading : he.submit}
+        {saved ? `✓ ${he.saved}` : saving ? he.loading : existing ? 'עדכן ניחוש' : he.submit}
       </button>
 
       {/* Anonymous group stats */}
       <PredictionStats match={match} refreshKey={statsRefreshKey} />
+    </div>
+  )
+}
+
+function ScoreStepper({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const num = parseInt(value)
+  const current = isNaN(num) ? 0 : num
+
+  function set(n: number) {
+    onChange(String(Math.max(0, Math.min(20, n))))
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-1.5">
+      <button
+        type="button"
+        onClick={() => set(current + 1)}
+        className="w-10 h-7 bg-emerald-500/20 hover:bg-emerald-500/40 border border-emerald-500/40 text-emerald-300 rounded-lg font-black text-base flex items-center justify-center transition active:scale-90 shadow-sm"
+        aria-label="הוסף שער"
+      >
+        +
+      </button>
+      <div className="relative">
+        <input
+          type="number"
+          min={0}
+          max={20}
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          className="w-16 h-16 text-center text-3xl font-black bg-slate-800/80 border-2 border-emerald-500/40 text-white rounded-2xl shadow-lg shadow-emerald-500/10 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-500/30 focus:outline-none transition tabular-nums"
+          placeholder="0"
+        />
+      </div>
+      <button
+        type="button"
+        onClick={() => set(current - 1)}
+        disabled={current === 0}
+        className="w-10 h-7 bg-slate-700/40 hover:bg-slate-700/70 border border-white/10 text-gray-300 rounded-lg font-black text-base flex items-center justify-center transition active:scale-90 disabled:opacity-30 shadow-sm"
+        aria-label="הורד שער"
+      >
+        −
+      </button>
     </div>
   )
 }
