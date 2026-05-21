@@ -45,8 +45,12 @@ function norm(s: string): string {
     .replace(/cabo verde|cape verde/g, 'cape verde')
     .replace(/czech republic|czechia/g, 'czechia')
     .replace(/trinidad.*tobago/g, 'trinidad')
+    // DR Congo / Congo DR / Democratic Republic of the Congo → canonical "congo dr"
+    .replace(/\bdr\s+congo\b/g, 'congo dr')
+    .replace(/\bdemocratic republic of (the )?congo\b/g, 'congo dr')
     .replace(/[-–—]/g, ' ')          // hyphens/dashes → spaces  ("Bosnia-Herzegovina")
-    .replace(/\b(and|&)\b/g, ' ')    // strip 'and'/'&'           ("Bosnia and Herzegovina")
+    .replace(/&/g, ' ')              // strip "&" (word-boundary \b doesn't match around &)
+    .replace(/\band\b/g, ' ')        // strip "and"               ("Bosnia and Herzegovina")
     .replace(/\s+/g, ' ')
     .trim()
 }
@@ -164,13 +168,24 @@ Deno.serve(async () => {
   // ── 3. Match & update ────────────────────────────────────────────────────
   let updated = 0
   let skipped = 0
+  const skippedDetails: { reason: string; home: string; away: string }[] = []
 
   for (const game of games) {
     const dbMatch = findDbMatch(matches as DbMatch[], game)
-    if (!dbMatch) { skipped++; continue }
+    if (!dbMatch) {
+      skipped++
+      skippedDetails.push({ reason: 'no_db_match', home: game.home_team, away: game.away_team })
+      console.log(`SKIP[no_db_match]: ${game.home_team} vs ${game.away_team} @ ${game.commence_time}`)
+      continue
+    }
 
     const avgOdds = averageH2HOdds(game)
-    if (!avgOdds) { skipped++; continue }
+    if (!avgOdds) {
+      skipped++
+      skippedDetails.push({ reason: 'no_h2h_odds', home: game.home_team, away: game.away_team })
+      console.log(`SKIP[no_h2h_odds]: ${game.home_team} vs ${game.away_team}`)
+      continue
+    }
 
     const { oddsA, oddsDraw, oddsB } = toProbs(avgOdds)
 
@@ -190,7 +205,7 @@ Deno.serve(async () => {
   }
 
   return new Response(
-    JSON.stringify({ total_games: games.length, updated, skipped, requests_remaining: remaining }),
+    JSON.stringify({ total_games: games.length, updated, skipped, skippedDetails, requests_remaining: remaining }),
     { headers: { 'Content-Type': 'application/json' } },
   )
 })
