@@ -149,17 +149,10 @@ function OddsBar({
     ? new Date(updatedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' })
     : null
 
-  // Build the 3 outcomes; sort by probability desc so favourite shows first
-  const outcomes = [
-    { pct: oddsA,    label: `ש${teamAName} תנצח`, dot: 'bg-emerald-400', text: 'text-emerald-300' },
-    { pct: oddsDraw, label: 'לתיקו',                dot: 'bg-amber-400',   text: 'text-amber-300'   },
-    { pct: oddsB,    label: `ש${teamBName} תנצח`, dot: 'bg-blue-400',    text: 'text-blue-300'    },
-  ].sort((a, b) => b.pct - a.pct)
-
   return (
-    <div className="mt-3 border-t border-white/5 pt-2.5 space-y-2">
-      {/* Probability bar — on top, no labels above */}
-      <div className="h-2 w-full rounded-full overflow-hidden flex bg-slate-700/40">
+    <div className="mt-3 border-t border-white/5 pt-2">
+      {/* Probability bar */}
+      <div className="h-1.5 w-full rounded-full overflow-hidden flex bg-slate-700/40">
         <div
           className="bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-500"
           style={{ width: `${oddsA}%` }}
@@ -174,23 +167,28 @@ function OddsBar({
         />
       </div>
 
-      {/* Outcome rows — sorted by probability (favourite first) */}
-      <div className="space-y-1">
-        {outcomes.map(o => (
-          <div key={o.label} className="flex items-center gap-2 text-[11px]">
-            <span className={`w-2 h-2 rounded-full ${o.dot} flex-shrink-0 shadow-sm`} />
-            <span className={`font-black tabular-nums ${o.text} min-w-[34px]`}>{o.pct}%</span>
-            <span className="text-gray-300 font-medium">{o.label}</span>
-          </div>
-        ))}
+      {/* Single horizontal row — labels aligned under their bar segments (RTL) */}
+      <div className="flex items-center justify-between mt-1.5 text-[10px] font-medium gap-2">
+        <span className="flex items-center gap-1 min-w-0 flex-shrink">
+          <span className="font-black text-emerald-300 tabular-nums">{oddsA}%</span>
+          <span className="text-gray-400 truncate">{teamAName}</span>
+        </span>
+        <span className="flex items-center gap-1 flex-shrink-0">
+          <span className="font-black text-amber-300 tabular-nums">{oddsDraw}%</span>
+          <span className="text-gray-400">תיקו</span>
+        </span>
+        <span className="flex items-center gap-1 min-w-0 flex-shrink justify-end">
+          <span className="font-black text-blue-300 tabular-nums">{oddsB}%</span>
+          <span className="text-gray-400 truncate">{teamBName}</span>
+        </span>
       </div>
 
-      {/* Source / updated time */}
-      <div className="flex items-center justify-center gap-1 text-[9px] text-gray-500 font-medium pt-0.5">
-        <span>📊</span>
-        <span>שוק הימורים</span>
-        {updatedLabel && <span className="text-gray-600">· עודכן {updatedLabel}</span>}
-      </div>
+      {/* Tiny source label */}
+      {updatedLabel && (
+        <div className="text-center text-[9px] text-gray-600 font-medium mt-0.5">
+          📊 שוק הימורים · {updatedLabel}
+        </div>
+      )}
     </div>
   )
 }
