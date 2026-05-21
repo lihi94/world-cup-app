@@ -86,6 +86,8 @@ export default function MatchCard({ match, myPrediction }: MatchCardProps) {
           oddsA={match.odds_a}
           oddsDraw={match.odds_draw}
           oddsB={match.odds_b}
+          teamAName={teamA?.name_he ?? teamA?.name ?? '?'}
+          teamBName={teamB?.name_he ?? teamB?.name ?? '?'}
           updatedAt={match.odds_updated_at}
         />
       )}
@@ -137,28 +139,26 @@ export default function MatchCard({ match, myPrediction }: MatchCardProps) {
 }
 
 function OddsBar({
-  oddsA, oddsDraw, oddsB, updatedAt,
+  oddsA, oddsDraw, oddsB, teamAName, teamBName, updatedAt,
 }: {
-  oddsA: number; oddsDraw: number; oddsB: number; updatedAt: string | null
+  oddsA: number; oddsDraw: number; oddsB: number
+  teamAName: string; teamBName: string
+  updatedAt: string | null
 }) {
   const updatedLabel = updatedAt
     ? new Date(updatedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' })
     : null
 
-  return (
-    <div className="mt-3 border-t border-white/5 pt-2.5">
-      {/* Label row */}
-      <div className="flex items-center justify-between text-[10px] font-bold mb-1.5 px-0.5">
-        <span className="text-emerald-300 tabular-nums">{oddsA}%</span>
-        <span className="flex items-center gap-1 text-gray-500">
-          <span>📊</span>
-          <span>שוק הימורים</span>
-          {updatedLabel && <span className="text-gray-600">· {updatedLabel}</span>}
-        </span>
-        <span className="text-blue-300 tabular-nums">{oddsB}%</span>
-      </div>
+  // Build the 3 outcomes; sort by probability desc so favourite shows first
+  const outcomes = [
+    { pct: oddsA,    label: `ש${teamAName} תנצח`, dot: 'bg-emerald-400', text: 'text-emerald-300' },
+    { pct: oddsDraw, label: 'לתיקו',                dot: 'bg-amber-400',   text: 'text-amber-300'   },
+    { pct: oddsB,    label: `ש${teamBName} תנצח`, dot: 'bg-blue-400',    text: 'text-blue-300'    },
+  ].sort((a, b) => b.pct - a.pct)
 
-      {/* Probability bar */}
+  return (
+    <div className="mt-3 border-t border-white/5 pt-2.5 space-y-2">
+      {/* Probability bar — on top, no labels above */}
       <div className="h-2 w-full rounded-full overflow-hidden flex bg-slate-700/40">
         <div
           className="bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-500"
@@ -174,10 +174,22 @@ function OddsBar({
         />
       </div>
 
-      {/* Draw label */}
-      <div className="flex items-center justify-center mt-1 text-[9px] text-amber-300/70 font-medium gap-0.5">
-        <span>תיקו</span>
-        <span className="tabular-nums">{oddsDraw}%</span>
+      {/* Outcome rows — sorted by probability (favourite first) */}
+      <div className="space-y-1">
+        {outcomes.map(o => (
+          <div key={o.label} className="flex items-center gap-2 text-[11px]">
+            <span className={`w-2 h-2 rounded-full ${o.dot} flex-shrink-0 shadow-sm`} />
+            <span className={`font-black tabular-nums ${o.text} min-w-[34px]`}>{o.pct}%</span>
+            <span className="text-gray-300 font-medium">{o.label}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Source / updated time */}
+      <div className="flex items-center justify-center gap-1 text-[9px] text-gray-500 font-medium pt-0.5">
+        <span>📊</span>
+        <span>שוק הימורים</span>
+        {updatedLabel && <span className="text-gray-600">· עודכן {updatedLabel}</span>}
       </div>
     </div>
   )

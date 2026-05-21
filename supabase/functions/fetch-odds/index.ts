@@ -42,7 +42,11 @@ function norm(s: string): string {
     .replace(/korea republic|south korea/g, 'korea')
     .replace(/korea dpr|north korea/g, 'korea dpr')
     .replace(/côte d.ivoire|ivory coast|cote d.ivoire/g, 'ivory coast')
+    .replace(/cabo verde|cape verde/g, 'cape verde')
+    .replace(/czech republic|czechia/g, 'czechia')
     .replace(/trinidad.*tobago/g, 'trinidad')
+    .replace(/[-–—]/g, ' ')          // hyphens/dashes → spaces  ("Bosnia-Herzegovina")
+    .replace(/\b(and|&)\b/g, ' ')    // strip 'and'/'&'           ("Bosnia and Herzegovina")
     .replace(/\s+/g, ' ')
     .trim()
 }
