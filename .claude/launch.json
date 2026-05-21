@@ -3,7 +3,7 @@
   "configurations": [
     {
       "name": "world-cup-app",
-      "runtimeExecutable": "npm.cmd",
+      "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "port": 5173
     }
