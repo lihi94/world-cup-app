@@ -23,8 +23,9 @@ export default function GoldenBetsPage() {
 
   useEffect(() => {
     Promise.all([
-      supabase.from('teams').select('*').order('name'),
-      supabase.from('players').select('*, teams(id,name,name_he)').order('name'),
+      // Order by bookmaker-consensus favorite rank (NULL ranks sort last, alpha as tiebreak)
+      supabase.from('teams').select('*').order('favorite_rank', { ascending: true, nullsFirst: false }).order('name'),
+      supabase.from('players').select('*, teams(id,name,name_he,favorite_rank)').order('favorite_rank', { ascending: true, nullsFirst: false }).order('name'),
       user && supabase.from('golden_bets').select('*').eq('user_id', user.id).maybeSingle(),
     ]).then(([teamsRes, playersRes, betRes]) => {
       setTeams(teamsRes.data ?? [])
