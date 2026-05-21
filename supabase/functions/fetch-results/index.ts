@@ -125,8 +125,42 @@ Deno.serve(async () => {
     )
   }
 
+  // ── Pre-match odds refresh ────────────────────────────────────────────────
+  // If any SCHEDULED match kicks off within the next 3 hours and its odds
+  // are stale (never fetched, or last fetched >2 h ago), trigger fetch-odds.
+  // This implements the "refresh 3 h before each match" requirement without
+  // needing a separate cron job per match.
+  const in3h = new Date(Date.now() + 3 * 3_600_000).toISOString()
+  const { data: upcoming } = await supabase
+    .from('matches')
+    .select('id, start_time, odds_updated_at')
+    .eq('status', 'SCHEDULED')
+    .gt('start_time', new Date().toISOString())
+    .lt('start_time', in3h)
+
+  const oddsStale = upcoming?.some(m => {
+    if (!m.odds_updated_at) return true
+    return Date.now() - new Date(m.odds_updated_at).getTime() > 2 * 3_600_000
+  })
+
+  let oddsRefreshed = false
+  if (oddsStale) {
+    const oddsRes = await fetch(
+      `${Deno.env.get('SUPABASE_URL')}/functions/v1/fetch-odds`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({}),
+      }
+    )
+    oddsRefreshed = oddsRes.ok
+  }
+
   return new Response(
-    JSON.stringify({ updated: matches.length, scored: newlyFinished.length }),
+    JSON.stringify({ updated: matches.length, scored: newlyFinished.length, oddsRefreshed }),
     { headers: { 'Content-Type': 'application/json' } }
   )
 })

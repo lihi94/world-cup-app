@@ -80,32 +80,14 @@ export default function MatchCard({ match, myPrediction }: MatchCardProps) {
         <TeamDisplay name={teamB?.name_he ?? teamB?.name ?? '?'} crest={teamB?.crest_url} />
       </div>
 
-      {/* AI odds bar (only when match is scheduled and odds exist) */}
+      {/* Betting odds bar (only when scheduled and odds available) */}
       {isScheduled && match.odds_a !== null && match.odds_b !== null && match.odds_draw !== null && (
-        <div className="mt-3">
-          <div className="flex items-center justify-between text-[10px] font-bold mb-1 px-0.5">
-            <span className="flex items-center gap-1 text-emerald-300">
-              <span className="text-sm">🇦</span>
-              {match.odds_a}%
-            </span>
-            <span className="text-gray-400 flex items-center gap-1">
-              <span className="text-xs">✨</span>
-              סיכויי A.I
-            </span>
-            <span className="flex items-center gap-1 text-blue-300">
-              {match.odds_b}%
-              <span className="text-sm">🇧</span>
-            </span>
-          </div>
-          <div className="h-1.5 w-full rounded-full overflow-hidden flex bg-slate-700/40">
-            <div className="bg-emerald-500/80 transition-all" style={{ width: `${match.odds_a}%` }} />
-            <div className="bg-amber-500/70 transition-all" style={{ width: `${match.odds_draw}%` }} />
-            <div className="bg-blue-500/80 transition-all" style={{ width: `${match.odds_b}%` }} />
-          </div>
-          <div className="flex items-center justify-center gap-0.5 mt-0.5 text-[9px] text-amber-300/80 font-medium">
-            <span>תיקו {match.odds_draw}%</span>
-          </div>
-        </div>
+        <OddsBar
+          oddsA={match.odds_a}
+          oddsDraw={match.odds_draw}
+          oddsB={match.odds_b}
+          updatedAt={match.odds_updated_at}
+        />
       )}
 
       {/* Bottom: prediction status */}
@@ -151,6 +133,53 @@ export default function MatchCard({ match, myPrediction }: MatchCardProps) {
         ) : null}
       </div>
     </Link>
+  )
+}
+
+function OddsBar({
+  oddsA, oddsDraw, oddsB, updatedAt,
+}: {
+  oddsA: number; oddsDraw: number; oddsB: number; updatedAt: string | null
+}) {
+  const updatedLabel = updatedAt
+    ? new Date(updatedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' })
+    : null
+
+  return (
+    <div className="mt-3 border-t border-white/5 pt-2.5">
+      {/* Label row */}
+      <div className="flex items-center justify-between text-[10px] font-bold mb-1.5 px-0.5">
+        <span className="text-emerald-300 tabular-nums">{oddsA}%</span>
+        <span className="flex items-center gap-1 text-gray-500">
+          <span>📊</span>
+          <span>שוק הימורים</span>
+          {updatedLabel && <span className="text-gray-600">· {updatedLabel}</span>}
+        </span>
+        <span className="text-blue-300 tabular-nums">{oddsB}%</span>
+      </div>
+
+      {/* Probability bar */}
+      <div className="h-2 w-full rounded-full overflow-hidden flex bg-slate-700/40">
+        <div
+          className="bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-500"
+          style={{ width: `${oddsA}%` }}
+        />
+        <div
+          className="bg-gradient-to-r from-amber-500/80 to-amber-400/80 transition-all duration-500"
+          style={{ width: `${oddsDraw}%` }}
+        />
+        <div
+          className="bg-gradient-to-r from-blue-400 to-blue-500 transition-all duration-500"
+          style={{ width: `${oddsB}%` }}
+        />
+      </div>
+
+      {/* Draw label */}
+      <div className="flex items-center justify-center mt-1 text-[9px] text-amber-300/70 font-medium gap-0.5">
+        <span>תיקו</span>
+        <span className="tabular-nums">{oddsDraw}%</span>
+      </div>
+    </div>
   )
 }
 
