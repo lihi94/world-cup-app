@@ -126,25 +126,36 @@ Deno.serve(async () => {
   }
 
   // ── Pre-match odds refresh ────────────────────────────────────────────────
-  // If any SCHEDULED match kicks off within the next 3 hours and its odds
-  // are stale (never fetched, or last fetched >2 h ago), trigger fetch-odds.
-  // This implements the "refresh 3 h before each match" requirement without
-  // needing a separate cron job per match.
-  const in3h = new Date(Date.now() + 3 * 3_600_000).toISOString()
-  const { data: upcoming } = await supabase
-    .from('matches')
-    .select('id, start_time, odds_updated_at')
-    .eq('status', 'SCHEDULED')
-    .gt('start_time', new Date().toISOString())
-    .lt('start_time', in3h)
+  // Refresh odds exactly twice per match:
+  //   • ~24 h before kickoff  (window: 22 h – 26 h from now, stale if >20 h old)
+  //   • ~3 h before kickoff   (window:  2 h –  4 h from now, stale if > 2 h old)
+  // fetch-results runs every 15 min, so each window fires only once per match
+  // (subsequent ticks find odds fresh and skip).
+  const now = Date.now()
 
-  const oddsStale = upcoming?.some(m => {
-    if (!m.odds_updated_at) return true
-    return Date.now() - new Date(m.odds_updated_at).getTime() > 2 * 3_600_000
-  })
+  const [w24, w3] = await Promise.all([
+    supabase
+      .from('matches')
+      .select('id, odds_updated_at')
+      .eq('status', 'SCHEDULED')
+      .gt('start_time', new Date(now + 22 * 3_600_000).toISOString())
+      .lt('start_time', new Date(now + 26 * 3_600_000).toISOString()),
+    supabase
+      .from('matches')
+      .select('id, odds_updated_at')
+      .eq('status', 'SCHEDULED')
+      .gt('start_time', new Date(now +  2 * 3_600_000).toISOString())
+      .lt('start_time', new Date(now +  4 * 3_600_000).toISOString()),
+  ])
+
+  const stale20h = new Date(now - 20 * 3_600_000).toISOString()
+  const stale2h  = new Date(now -  2 * 3_600_000).toISOString()
+
+  const needs24h = w24.data?.some(m => !m.odds_updated_at || m.odds_updated_at < stale20h)
+  const needs3h  = w3.data?.some(m  => !m.odds_updated_at || m.odds_updated_at < stale2h)
 
   let oddsRefreshed = false
-  if (oddsStale) {
+  if (needs24h || needs3h) {
     const oddsRes = await fetch(
       `${Deno.env.get('SUPABASE_URL')}/functions/v1/fetch-odds`,
       {
