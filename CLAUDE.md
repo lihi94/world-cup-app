@@ -9,12 +9,16 @@
 ```
 
 ```bash
-npm run dev        # שרת פיתוח מקומי (פורט 5173)
+npm run dev        # שרת פיתוח מקומי (פורט 5273 — strictPort)
 npm run build      # בנייה לפרודקשן
 npm run test       # טסטים (vitest)
 ```
 
-להפעלת preview בתוך Claude Code — השתמש ב-preview_start עם שם "world-cup-app" (launch.json כבר מוגדר).
+להפעלת preview בתוך Claude Code — השתמש ב-preview_start עם שם "world-cup-app" (launch.json כבר מוגדר עם cwd ופורט קבוע).
+
+**⚠️ הפרדה מאחאים:** Vite מוגדר לפורט **5273** עם `strictPort: true` כדי למנוע
+התנגשות עם פרויקטים אחרים בתיקיית האב (`cluade code/`) שגם רצים על Vite (ברירת מחדל 5173).
+אם הפורט תפוס — השרת נופל מיד במקום להחליק לפורט אחר ולגרום ל-preview להציג אפליקציה שגויה.
 
 ## Stack
 
