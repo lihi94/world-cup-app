@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../services/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import Spinner from '../../components/common/Spinner'
 import Hero from '../../components/common/Hero'
+import MatchSection from '../../components/common/MatchSection'
 import { formatKickoff } from '../../utils/date'
 import { he } from '../../i18n/he'
+import { groupMatchesIntoSections } from '../../utils/grouping'
 import { displayName, type Match, type Prediction } from '../../types'
 
 type Tab = 'finished' | 'live' | 'upcoming'
@@ -42,7 +44,7 @@ export default function PredictionsFeedPage() {
 
     let q = supabase
       .from('matches')
-      .select('*, team_a:teams!team_a_id(id,name,name_he,crest_url), team_b:teams!team_b_id(id,name,name_he,crest_url)')
+      .select('*, team_a:teams!team_a_id(id,name,name_he,crest_url,group_name), team_b:teams!team_b_id(id,name,name_he,crest_url,group_name)')
 
     if (tab === 'finished') {
       q = q.eq('status', 'FINISHED').order('start_time', { ascending: false }).limit(30)
@@ -89,6 +91,10 @@ export default function PredictionsFeedPage() {
     })
   }
 
+  // Group matches by group_name (group stage) or stage (knockout).
+  // Sections come back in tournament order: A→L, then R32→Final.
+  const sections = useMemo(() => groupMatchesIntoSections(matches), [matches])
+
   return (
     <div className="max-w-lg mx-auto px-4 pt-5 pb-24 space-y-5">
 
@@ -130,95 +136,107 @@ export default function PredictionsFeedPage() {
           </p>
         </div>
       ) : (
-        <div className="space-y-3 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-          {matches.map((m, i) => {
-            const preds = predictionsByMatch.get(m.id) ?? []
-            const bots = preds.filter(p => p.profiles?.is_bot)
-            const humans = preds.filter(p => !p.profiles?.is_bot)
-            const isOpen = expanded.has(m.id)
-            const isFinished = m.status === 'FINISHED'
+        <div className="space-y-2 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+          {sections.map((section, si) => (
+            <MatchSection
+              key={section.key}
+              title={section.title}
+              icon={section.icon}
+              accent={section.accent}
+              count={section.matches.length}
+              defaultOpen={si === 0}
+              delay={`${0.1 + si * 0.03}s`}
+            >
+              {section.matches.map(m => {
+                const preds = predictionsByMatch.get(m.id) ?? []
+                const bots = preds.filter(p => p.profiles?.is_bot)
+                const humans = preds.filter(p => !p.profiles?.is_bot)
+                const isOpen = expanded.has(m.id)
+                const isFinished = m.status === 'FINISHED'
 
-            return (
-              <div key={m.id} className="glass-card rounded-2xl overflow-hidden animate-fade-in-up" style={{ animationDelay: `${0.1 + i * 0.04}s` }}>
+                return (
+                  <div key={m.id} className="glass-card rounded-2xl overflow-hidden">
 
-                {/* Match header */}
-                <button
-                  onClick={() => toggleExpand(m.id)}
-                  className="w-full p-4 flex items-center gap-3 hover:bg-white/5 transition text-right"
-                >
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-blue-500/20 text-blue-300 border-blue-500/30 shrink-0">
-                    {STAGE_LABELS[m.stage] ?? m.stage}
-                  </span>
-
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-gray-100 truncate">
-                      {m.team_a?.name_he ?? m.team_a?.name ?? '?'} <span className="text-gray-500">×</span> {m.team_b?.name_he ?? m.team_b?.name ?? '?'}
-                    </p>
-                    <p className="text-[10px] text-gray-500 mt-0.5">{formatKickoff(m.start_time)}</p>
-                  </div>
-
-                  {/* Score */}
-                  {isFinished ? (
-                    <span className="text-lg font-black text-white tabular-nums shrink-0">
-                      {m.score_a}–{m.score_b}
-                    </span>
-                  ) : m.status === 'IN_PLAY' ? (
-                    <span className="text-base font-black text-yellow-300 tabular-nums shrink-0">
-                      {m.score_a ?? 0}–{m.score_b ?? 0}
-                    </span>
-                  ) : null}
-
-                  <span className={`text-xs text-gray-500 transition-transform shrink-0 ${isOpen ? 'rotate-180' : ''}`}>▼</span>
-                </button>
-
-                {/* Expanded predictions */}
-                {isOpen && (
-                  <div className="border-t border-white/5 divide-y divide-white/5">
-                    {/* Bots — always shown */}
-                    {bots.length > 0 && (
-                      <div className="px-4 py-3 bg-purple-500/[0.06]">
-                        <p className="text-[10px] font-bold text-purple-300 uppercase tracking-wider mb-2">🤖 בוטים</p>
-                        <div className="space-y-1.5">
-                          {bots.map(p => (
-                            <PredRow key={p.id} pred={p} isMe={p.user_id === user?.id} isFinished={isFinished} />
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Humans — only if visible */}
-                    {humans.length > 0 ? (
-                      <div className="px-4 py-3">
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">
-                          👥 חברים
-                          {isFinished && <span className="mr-1 text-emerald-400 normal-case">· ממוין לפי נקודות</span>}
-                        </p>
-                        <div className="space-y-1.5">
-                          {[...humans]
-                            .sort((a, b) => isFinished ? b.points_earned - a.points_earned : 0)
-                            .map((p, idx) => (
-                              <PredRow key={p.id} pred={p} isMe={p.user_id === user?.id} isFinished={isFinished} rank={isFinished ? idx + 1 : undefined} />
-                            ))}
-                        </div>
-                      </div>
-                    ) : m.status === 'SCHEDULED' && (
-                      <div className="px-4 py-3 text-center">
-                        <p className="text-xs text-gray-500">🔒 ניחושי חברים יחשפו ברגע הפתיחה</p>
-                      </div>
-                    )}
-
-                    {/* Link to full match */}
-                    <Link
-                      to={`/matches/${m.id}`}
-                      className="block px-4 py-2.5 text-center text-xs font-bold text-emerald-400 hover:bg-emerald-500/10 transition"
+                    {/* Match header */}
+                    <button
+                      onClick={() => toggleExpand(m.id)}
+                      className="w-full p-4 flex items-center gap-3 hover:bg-white/5 transition text-right"
                     >
-                      פתח את עמוד המשחק ←
-                    </Link>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-blue-500/20 text-blue-300 border-blue-500/30 shrink-0">
+                        {STAGE_LABELS[m.stage] ?? m.stage}
+                      </span>
+
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-gray-100 truncate">
+                          {m.team_a?.name_he ?? m.team_a?.name ?? '?'} <span className="text-gray-500">×</span> {m.team_b?.name_he ?? m.team_b?.name ?? '?'}
+                        </p>
+                        <p className="text-[10px] text-gray-500 mt-0.5">{formatKickoff(m.start_time)}</p>
+                      </div>
+
+                      {/* Score */}
+                      {isFinished ? (
+                        <span className="text-lg font-black text-white tabular-nums shrink-0">
+                          {m.score_a}–{m.score_b}
+                        </span>
+                      ) : m.status === 'IN_PLAY' ? (
+                        <span className="text-base font-black text-yellow-300 tabular-nums shrink-0">
+                          {m.score_a ?? 0}–{m.score_b ?? 0}
+                        </span>
+                      ) : null}
+
+                      <span className={`text-xs text-gray-500 transition-transform shrink-0 ${isOpen ? 'rotate-180' : ''}`}>▼</span>
+                    </button>
+
+                    {/* Expanded predictions */}
+                    {isOpen && (
+                      <div className="border-t border-white/5 divide-y divide-white/5">
+                        {/* Bots — always shown */}
+                        {bots.length > 0 && (
+                          <div className="px-4 py-3 bg-purple-500/[0.06]">
+                            <p className="text-[10px] font-bold text-purple-300 uppercase tracking-wider mb-2">🤖 בוטים</p>
+                            <div className="space-y-1.5">
+                              {bots.map(p => (
+                                <PredRow key={p.id} pred={p} isMe={p.user_id === user?.id} isFinished={isFinished} />
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Humans — only if visible */}
+                        {humans.length > 0 ? (
+                          <div className="px-4 py-3">
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">
+                              👥 חברים
+                              {isFinished && <span className="mr-1 text-emerald-400 normal-case">· ממוין לפי נקודות</span>}
+                            </p>
+                            <div className="space-y-1.5">
+                              {[...humans]
+                                .sort((a, b) => isFinished ? b.points_earned - a.points_earned : 0)
+                                .map((p, idx) => (
+                                  <PredRow key={p.id} pred={p} isMe={p.user_id === user?.id} isFinished={isFinished} rank={isFinished ? idx + 1 : undefined} />
+                                ))}
+                            </div>
+                          </div>
+                        ) : m.status === 'SCHEDULED' && (
+                          <div className="px-4 py-3 text-center">
+                            <p className="text-xs text-gray-500">🔒 ניחושי חברים יחשפו ברגע הפתיחה</p>
+                          </div>
+                        )}
+
+                        {/* Link to full match */}
+                        <Link
+                          to={`/matches/${m.id}`}
+                          className="block px-4 py-2.5 text-center text-xs font-bold text-emerald-400 hover:bg-emerald-500/10 transition"
+                        >
+                          פתח את עמוד המשחק ←
+                        </Link>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            )
-          })}
+                )
+              })}
+            </MatchSection>
+          ))}
         </div>
       )}
     </div>

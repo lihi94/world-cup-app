@@ -7,6 +7,7 @@ export interface Team {
   name_he: string | null
   crest_url: string | null
   external_id: number | null
+  group_name?: string | null  // 'A'..'L' for WC 2026 groups
 }
 
 export interface Player {

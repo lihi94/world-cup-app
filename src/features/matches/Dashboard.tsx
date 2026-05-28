@@ -6,9 +6,10 @@ import Spinner from '../../components/common/Spinner'
 import Hero from '../../components/common/Hero'
 import WorldCupLogo from '../../components/common/WorldCupLogo'
 import ProfileEditor from '../../components/common/ProfileEditor'
+import MatchSection from '../../components/common/MatchSection'
 import { displayName } from '../../types'
-import { formatDateHeader, dateKey } from '../../utils/date'
 import { he } from '../../i18n/he'
+import { groupMatchesIntoSections } from '../../utils/grouping'
 import type { Match, Prediction } from '../../types'
 
 async function handleLogout() {
@@ -49,7 +50,7 @@ export default function Dashboard() {
       // matches move out of the dashboard into the "ניחושים" tab.
       supabase
         .from('matches')
-        .select('*, team_a:teams!team_a_id(id,name,name_he,crest_url), team_b:teams!team_b_id(id,name,name_he,crest_url)')
+        .select('*, team_a:teams!team_a_id(id,name,name_he,crest_url,group_name), team_b:teams!team_b_id(id,name,name_he,crest_url,group_name)')
         .eq('status', 'SCHEDULED')
         .gte('start_time', now)
         .order('start_time', { ascending: true }),
@@ -68,7 +69,7 @@ export default function Dashboard() {
   }
 
   // Split: bettable (has teams) vs locked (knockout TBD)
-  const { bettable, locked, byDate } = useMemo(() => {
+  const { bettable, locked, sections } = useMemo(() => {
     const bet: Match[] = []
     const lck: Match[] = []
     for (const m of upcomingMatches) {
@@ -76,14 +77,9 @@ export default function Dashboard() {
       else lck.push(m)
     }
 
-    // Group bettable by date
-    const grouped = new Map<string, Match[]>()
-    for (const m of bet) {
-      const k = dateKey(m.start_time)
-      if (!grouped.has(k)) grouped.set(k, [])
-      grouped.get(k)!.push(m)
-    }
-    return { bettable: bet, locked: lck, byDate: grouped }
+    // Group bettable matches by group_name (group stage) or stage (knockout).
+    // Sections come back in tournament order: A→L, then R32→Final.
+    return { bettable: bet, locked: lck, sections: groupMatchesIntoSections(bet) }
   }, [upcomingMatches])
 
   if (loading) {
@@ -178,21 +174,30 @@ export default function Dashboard() {
             <p className="text-gray-300 text-sm">{he.noUpcoming}</p>
           </div>
         ) : (
-          <div className="space-y-5">
-            {[...byDate.entries()].map(([key, matches], gi) => (
-              <div key={key} className="space-y-2 animate-fade-in-up" style={{ animationDelay: `${0.25 + gi * 0.03}s` }}>
-                <div className="flex items-center gap-2 px-1">
-                  <div className="h-px flex-1 bg-gradient-to-l from-emerald-500/30 to-transparent" />
-                  <h3 className="text-xs font-bold text-emerald-300/80 uppercase tracking-wider">
-                    {formatDateHeader(matches[0].start_time)}
-                  </h3>
-                  <div className="h-px flex-1 bg-gradient-to-r from-emerald-500/30 to-transparent" />
-                </div>
-                {matches.map(m => (
-                  <MatchCard key={m.id} match={m} myPrediction={myPredictions.get(m.id)} />
-                ))}
-              </div>
-            ))}
+          <div className="space-y-2">
+            {sections.map((section, si) => {
+              // Show "X חסרים" subtitle when the user hasn't predicted some matches in this section.
+              const missing = section.matches.filter(m => !myPredictions.has(m.id)).length
+              const subtitle = missing > 0
+                ? `${missing} חסרי ניחוש`
+                : `כל הניחושים מולאו ✓`
+              return (
+                <MatchSection
+                  key={section.key}
+                  title={section.title}
+                  icon={section.icon}
+                  accent={section.accent}
+                  count={section.matches.length}
+                  subtitle={subtitle}
+                  defaultOpen={si === 0}
+                  delay={`${0.25 + si * 0.03}s`}
+                >
+                  {section.matches.map(m => (
+                    <MatchCard key={m.id} match={m} myPrediction={myPredictions.get(m.id)} />
+                  ))}
+                </MatchSection>
+              )
+            })}
           </div>
         )}
       </section>
