@@ -51,13 +51,27 @@ Deno.serve(async () => {
   )
 
   // Single API call — fetch all WC matches at once to respect rate limits
-  const res = await fetch(
-    `${FOOTBALL_API}/competitions/${COMPETITION}/matches?season=2026`,
-    { headers: { 'X-Auth-Token': Deno.env.get('FOOTBALL_API_KEY')! } }
-  )
+  const apiKey = Deno.env.get('FOOTBALL_API_KEY')
+  if (!apiKey) {
+    return new Response('FOOTBALL_API_KEY secret not set', { status: 500 })
+  }
+
+  const url = `${FOOTBALL_API}/competitions/${COMPETITION}/matches?season=2026`
+  const res = await fetch(url, { headers: { 'X-Auth-Token': apiKey } })
 
   if (!res.ok) {
-    return new Response(`Football API error: ${res.status}`, { status: 502 })
+    const body = await res.text()
+    console.error(`Football API error ${res.status} on ${url}`, body)
+    return new Response(
+      JSON.stringify({
+        error: 'football_api_error',
+        status: res.status,
+        url,
+        keyLength: apiKey.length,
+        body: body.slice(0, 500),
+      }),
+      { status: 502, headers: { 'Content-Type': 'application/json' } }
+    )
   }
 
   const { matches } = await res.json()
