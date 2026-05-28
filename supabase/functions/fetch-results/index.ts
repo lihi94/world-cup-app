@@ -1,10 +1,18 @@
 // fetch-results/index.ts
-// Supabase Edge Function — called by pg_cron every 15 minutes.
+// Supabase Edge Function — called by pg_cron every 5 minutes.
 //
-// Cron is LIVE — runs every 15 minutes via pg_cron (job id 2).
+// Cron is LIVE — runs every 5 minutes via pg_cron (job id 2).
 // To inspect: SELECT jobid, jobname, schedule, active FROM cron.job;
 // To pause:   SELECT cron.unschedule('fetch-match-results');
 // To resume:  re-run the SELECT cron.schedule(...) in the Supabase SQL editor.
+// To change cadence (no downtime, keeps job ID):
+//             SELECT cron.alter_job(job_id := 2, schedule := '*/N * * * *');
+//
+// Safety properties verified (2026-05-23) for sub-15min cadence:
+//   • score-predictions is idempotent — re-runs produce identical points
+//   • fetch-odds trigger uses staleness windows (20h/2h), not frequency,
+//     so total odds-API calls remain ~2 per match regardless of cron rate
+//   • football-data.org free tier (10 req/min) leaves 50× headroom at 5min
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -129,8 +137,11 @@ Deno.serve(async () => {
   // Refresh odds exactly twice per match:
   //   • ~24 h before kickoff  (window: 22 h – 26 h from now, stale if >20 h old)
   //   • ~3 h before kickoff   (window:  2 h –  4 h from now, stale if > 2 h old)
-  // fetch-results runs every 15 min, so each window fires only once per match
-  // (subsequent ticks find odds fresh and skip).
+  // fetch-results runs every 5 min — many cron ticks land inside each window,
+  // but only the FIRST one actually triggers fetch-odds because subsequent
+  // ticks see odds_updated_at within the staleness threshold and skip.
+  // Net result: ~2 fetch-odds calls per match across the whole tournament,
+  // identical to the previous 15-min cadence.
   const now = Date.now()
 
   const [w24, w3] = await Promise.all([

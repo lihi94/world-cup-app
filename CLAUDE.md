@@ -41,16 +41,22 @@ npm run test       # טסטים (vitest)
 
 | Function | Version | תפקיד |
 |----------|---------|--------|
-| `fetch-results` | v6 | מעדכן תוצאות כל 15 דקות (pg_cron job id=2) |
-| `fetch-odds` | v3 | מושך יחסי הימורים מ-The Odds API |
-| `score-predictions` | v2 | מחשב נקודות לאחר סיום משחק |
+| `fetch-results` | v6 | מעדכן תוצאות כל **5 דקות** (pg_cron job id=2) |
+| `fetch-odds` | v5 | מושך יחסי הימורים מ-The Odds API |
+| `score-predictions` | v2 | מחשב נקודות לאחר סיום משחק (idempotent — קובע points_earned, לא incremental) |
 
 ### Cron Jobs
 
-- **job id=2** `fetch-match-results` — כל 15 דקות — מריץ `fetch-results`
+- **job id=2** `fetch-match-results` — schedule `*/5 * * * *` (כל 5 דק׳) — מריץ `fetch-results`
 - `fetch-results` מטריגר את `fetch-odds` אוטומטית:
   - חלון 24 שעות לפני המשחק (22–26 שעות מראש, stale אחרי 20 שעות)
   - חלון 3 שעות לפני המשחק (2–4 שעות מראש, stale אחרי 2 שעות)
+- שינוי קצב ה-cron בלי downtime (שומר על אותו ID):
+  `SELECT cron.alter_job(job_id := 2, schedule := '*/N * * * *');`
+
+**למה 5 דקות בטוח:** `score-predictions` קורא `recalculate_user_points` שמחשב הכל מאפס,
+אז גם race condition עם הפעלה כפולה → תוצאה זהה. `fetch-odds` משתמש ב-staleness
+windows ולא בתדירות, אז סה"כ קריאות ל-The Odds API לא משתנה (~215 לטורניר כולו).
 
 ### טבלאות מרכזיות
 
