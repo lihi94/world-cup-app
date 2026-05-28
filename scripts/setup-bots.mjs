@@ -18,7 +18,7 @@ const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY
 
 const BOTS = [
-  { email: 'yani-bot@league.local',   username: 'רובט A.I', avatar: '🤖', password: rand(24) },
+  { email: 'yani-bot@league.local',   username: 'רובוט A.I', avatar: '🤖', password: rand(24) },
   { email: 'monkey-bot@league.local', username: 'הקוף',     avatar: '🐒', password: rand(24) },
 ]
 

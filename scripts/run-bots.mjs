@@ -46,7 +46,7 @@ const TEAM_STRENGTH = {
 }
 const DEFAULT_STRENGTH = 68
 
-const YANI_USERNAME = 'רובט A.I'
+const YANI_USERNAME = 'רובוט A.I'
 const MONKEY_USERNAME = 'הקוף'
 
 async function sb(path, options = {}) {
