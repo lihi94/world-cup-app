@@ -306,7 +306,7 @@ export default function AdminPage() {
             </div>
           </div>
 
-          {selectedMatch && selectedMatch.stage !== 'GROUP' && (
+          {selectedMatch && selectedMatch.stage !== 'GROUP' && selectedMatch.stage !== 'FRIENDLY' && (
             <div className="animate-fade-in-up">
               <label className="block text-xs font-bold text-gray-400 mb-1.5 uppercase tracking-wider">קבוצה עולה (בונוס)</label>
               <select

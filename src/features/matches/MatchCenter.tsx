@@ -112,7 +112,7 @@ export default function MatchCenter() {
             <TeamBlock team={teamB} />
           </div>
 
-          {isFinished && match.winner && match.stage !== 'GROUP' && (
+          {isFinished && match.winner && match.stage !== 'GROUP' && match.stage !== 'FRIENDLY' && (
             <p className="text-xs mt-4 text-emerald-200/80 flex items-center gap-1">
               <span>✈️</span>
               עולה לשלב הבא: <span className="font-bold text-white">{match.winner.name_he ?? match.winner.name}</span>
