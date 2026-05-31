@@ -12,7 +12,7 @@ interface PredictionFormProps {
   onSave: (scoreA: number, scoreB: number, qualifierId: string | null) => Promise<{ error: string | null }>
 }
 
-const isKnockout = (stage: string) => stage !== 'GROUP'
+const isKnockout = (stage: string) => stage !== 'GROUP' && stage !== 'FRIENDLY'
 
 export default function PredictionForm({ match, existing, onSave }: PredictionFormProps) {
   const [scoreA, setScoreA] = useState<string>(existing?.pred_score_a?.toString() ?? '')
