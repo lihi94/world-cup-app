@@ -29,6 +29,7 @@ export const he = {
   noUpcoming: 'אין משחקים קרובים',
 
   // Match stages
+  FRIENDLY: 'משחקי ידידות',
   GROUP: 'בתים',
   R32: 'שלב ה-32',
   R16: 'שמינית גמר',

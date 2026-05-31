@@ -26,18 +26,22 @@ const KNOCKOUT_ICONS: Record<string, string> = {
 
 /**
  * Group an ordered match list into sections by:
+ *   - FRIENDLY     → single warmup section ("משחקי ידידות") shown first
  *   - GROUP stage  → by `team_a.group_name` ("בית A", "בית B"...)
  *   - knockout     → by `stage` (R32, R16, QF, SF, THIRD, FINAL)
  *
- * Sections are returned in tournament order: groups A→L first, then
- * knockout rounds in chronological round order.
+ * Sections are returned in tournament order: friendlies first (pre-tournament
+ * warmup), then groups A→L, then knockout rounds in chronological round order.
  */
 export function groupMatchesIntoSections(matches: Match[]): MatchSectionData[] {
+  const friendlyBucket: Match[] = []
   const groupBuckets = new Map<string, Match[]>()  // key = group letter
   const stageBuckets = new Map<MatchStage, Match[]>()
 
   for (const m of matches) {
-    if (m.stage === 'GROUP') {
+    if (m.stage === 'FRIENDLY') {
+      friendlyBucket.push(m)
+    } else if (m.stage === 'GROUP') {
       // Use team_a's group_name; fall back to team_b's if team_a missing.
       const g = m.team_a?.group_name ?? m.team_b?.group_name ?? '?'
       const arr = groupBuckets.get(g) ?? []
@@ -51,6 +55,17 @@ export function groupMatchesIntoSections(matches: Match[]): MatchSectionData[] {
   }
 
   const sections: MatchSectionData[] = []
+
+  // Friendlies (pre-tournament warmup) shown first
+  if (friendlyBucket.length) {
+    sections.push({
+      key: 'friendly',
+      title: 'משחקי ידידות',
+      icon: '🤝',
+      accent: 'blue',
+      matches: friendlyBucket,
+    })
+  }
 
   // Group sections in alphabetical order (A, B, ..., L; ? last)
   const groupKeys = [...groupBuckets.keys()].sort((a, b) => {

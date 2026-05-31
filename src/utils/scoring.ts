@@ -20,7 +20,8 @@ export function calculatePoints(
 
   let pts = 0
 
-  if (stage === 'GROUP') {
+  if (stage === 'GROUP' || stage === 'FRIENDLY') {
+    // FRIENDLY uses same scoring as group stage (warmup match before tournament)
     pts = isExact ? 3 : isCorrectDir ? 2 : 0
   } else if (stage === 'FINAL') {
     pts = isExact ? 5 : isCorrectDir ? 4 : 0
@@ -34,7 +35,7 @@ export function calculatePoints(
 }
 
 export function maxPointsForStage(stage: MatchStage): number {
-  if (stage === 'GROUP') return 3
+  if (stage === 'GROUP' || stage === 'FRIENDLY') return 3
   if (stage === 'FINAL') return 6
   return 5
 }

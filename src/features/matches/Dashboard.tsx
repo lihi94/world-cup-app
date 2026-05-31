@@ -6,10 +6,9 @@ import Spinner from '../../components/common/Spinner'
 import Hero from '../../components/common/Hero'
 import WorldCupLogo from '../../components/common/WorldCupLogo'
 import ProfileEditor from '../../components/common/ProfileEditor'
-import MatchSection from '../../components/common/MatchSection'
 import { displayName } from '../../types'
 import { he } from '../../i18n/he'
-import { groupMatchesIntoSections } from '../../utils/grouping'
+import { dateKey, formatDateHeader } from '../../utils/date'
 import type { Match, Prediction } from '../../types'
 
 async function handleLogout() {
@@ -69,7 +68,7 @@ export default function Dashboard() {
   }
 
   // Split: bettable (has teams) vs locked (knockout TBD)
-  const { bettable, locked, sections } = useMemo(() => {
+  const { bettable, locked, dateSections } = useMemo(() => {
     const bet: Match[] = []
     const lck: Match[] = []
     for (const m of upcomingMatches) {
@@ -77,9 +76,18 @@ export default function Dashboard() {
       else lck.push(m)
     }
 
-    // Group bettable matches by group_name (group stage) or stage (knockout).
-    // Sections come back in tournament order: A→L, then R32→Final.
-    return { bettable: bet, locked: lck, sections: groupMatchesIntoSections(bet) }
+    // Group bettable matches by date (chronological, IL timezone) — keeps the
+    // dashboard focused on "what's today / what's tomorrow".
+    const byDate = new Map<string, Match[]>()
+    for (const m of bet) {
+      const k = dateKey(m.start_time)
+      const arr = byDate.get(k) ?? []
+      arr.push(m)
+      byDate.set(k, arr)
+    }
+    const datesArr = [...byDate.entries()].map(([k, ms]) => ({ key: k, matches: ms }))
+
+    return { bettable: bet, locked: lck, dateSections: datesArr }
   }, [upcomingMatches])
 
   if (loading) {
@@ -174,30 +182,21 @@ export default function Dashboard() {
             <p className="text-gray-300 text-sm">{he.noUpcoming}</p>
           </div>
         ) : (
-          <div className="space-y-2">
-            {sections.map((section, si) => {
-              // Show "X חסרים" subtitle when the user hasn't predicted some matches in this section.
-              const missing = section.matches.filter(m => !myPredictions.has(m.id)).length
-              const subtitle = missing > 0
-                ? `${missing} חסרי ניחוש`
-                : `כל הניחושים מולאו ✓`
-              return (
-                <MatchSection
-                  key={section.key}
-                  title={section.title}
-                  icon={section.icon}
-                  accent={section.accent}
-                  count={section.matches.length}
-                  subtitle={subtitle}
-                  defaultOpen={si === 0}
-                  delay={`${0.25 + si * 0.03}s`}
-                >
-                  {section.matches.map(m => (
-                    <MatchCard key={m.id} match={m} myPrediction={myPredictions.get(m.id)} />
-                  ))}
-                </MatchSection>
-              )
-            })}
+          <div className="space-y-5">
+            {dateSections.map((day, di) => (
+              <div key={day.key} className="space-y-2 animate-fade-in-up" style={{ animationDelay: `${0.25 + di * 0.03}s` }}>
+                <div className="flex items-center gap-2 px-1">
+                  <span className="w-1 h-4 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(52,211,153,0.5)]" />
+                  <h3 className="text-xs font-bold text-gray-300 uppercase tracking-wider">
+                    {formatDateHeader(day.matches[0].start_time)}
+                  </h3>
+                  <span className="text-[10px] text-gray-500 font-medium">· {day.matches.length}</span>
+                </div>
+                {day.matches.map(m => (
+                  <MatchCard key={m.id} match={m} myPrediction={myPredictions.get(m.id)} />
+                ))}
+              </div>
+            ))}
           </div>
         )}
       </section>
