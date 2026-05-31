@@ -7,7 +7,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-type Stage = 'GROUP' | 'R32' | 'R16' | 'QF' | 'SF' | 'THIRD' | 'FINAL'
+type Stage = 'FRIENDLY' | 'GROUP' | 'R32' | 'R16' | 'QF' | 'SF' | 'THIRD' | 'FINAL'
 
 // CRITICAL: if/else if chain — two separate `if` blocks would double-count
 // direction points when prediction is exact (e.g. group exact = 3, not 2+3=5).
@@ -27,7 +27,8 @@ function calculatePoints(
 
   let pts = 0
 
-  if (stage === 'GROUP') {
+  if (stage === 'GROUP' || stage === 'FRIENDLY') {
+    // FRIENDLY = pre-tournament warmup match. Same scoring as group stage.
     pts = isExact ? 3 : isCorrectDir ? 2 : 0
   } else if (stage === 'FINAL') {
     pts = isExact ? 5 : isCorrectDir ? 4 : 0

@@ -1,4 +1,4 @@
-export type MatchStage = 'GROUP' | 'R32' | 'R16' | 'QF' | 'SF' | 'THIRD' | 'FINAL'
+export type MatchStage = 'FRIENDLY' | 'GROUP' | 'R32' | 'R16' | 'QF' | 'SF' | 'THIRD' | 'FINAL'
 export type MatchStatus = 'SCHEDULED' | 'IN_PLAY' | 'FINISHED'
 
 export interface Team {
