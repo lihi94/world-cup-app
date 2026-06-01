@@ -11,10 +11,11 @@ import { he } from '../../i18n/he'
 import type { Match, Prediction } from '../../types'
 
 const STAGE_LABELS: Record<string, string> = {
-  GROUP: he.GROUP, R32: he.R32, R16: he.R16, QF: he.QF, SF: he.SF, THIRD: he.THIRD, FINAL: he.FINAL,
+  FRIENDLY: he.FRIENDLY, GROUP: he.GROUP, R32: he.R32, R16: he.R16, QF: he.QF, SF: he.SF, THIRD: he.THIRD, FINAL: he.FINAL,
 }
 
 const STAGE_COLORS: Record<string, string> = {
+  FRIENDLY: 'bg-sky-500/20 text-sky-300 border-sky-500/30',
   GROUP: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
   R32:   'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
   R16:   'bg-purple-500/20 text-purple-300 border-purple-500/30',
