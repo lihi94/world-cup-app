@@ -23,7 +23,7 @@ type PredictionWithProfile = Prediction & {
 }
 
 const STAGE_LABELS: Record<string, string> = {
-  GROUP: he.GROUP, R32: he.R32, R16: he.R16, QF: he.QF, SF: he.SF, THIRD: he.THIRD, FINAL: he.FINAL,
+  FRIENDLY: he.FRIENDLY, GROUP: he.GROUP, R32: he.R32, R16: he.R16, QF: he.QF, SF: he.SF, THIRD: he.THIRD, FINAL: he.FINAL,
 }
 
 export default function PredictionsFeedPage() {
