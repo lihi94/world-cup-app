@@ -48,6 +48,7 @@ npm run test       # טסטים (vitest)
 ### Cron Jobs
 
 - **job id=2** `fetch-match-results` — schedule `*/5 * * * *` (כל 5 דק׳) — מריץ `fetch-results`
+- **job id=4** `autofill-missing-predictions` — schedule `*/5 * * * *` — מריץ `autofill_missing_predictions()`: למשחק שכבר נעל (`start_time <= now()`), ממלא למי שלא ניחש **עותק של ניחוש הבוט AI** (רובוט A.I). idempotent (NOT EXISTS). מכסה גם ידידות בלי `external_id`. ראה מיגרציה `021`. (האוטו-פיל הרנדומלי הישן ב-`sync-core.mjs` הוסר.)
 - `fetch-results` מטריגר את `fetch-odds` אוטומטית:
   - חלון 24 שעות לפני המשחק (22–26 שעות מראש, stale אחרי 20 שעות)
   - חלון 3 שעות לפני המשחק (2–4 שעות מראש, stale אחרי 2 שעות)
@@ -109,7 +110,7 @@ src/
 - מוצג כ-bar צבעוני + שורה אופקית אחת עם שם קבוצה + אחוז + תיקו
 
 ### RLS
-- ניחושים נסתרים מאחרים עד שהמשחק כבר לא SCHEDULED
+- ניחושים נסתרים מאחרים עד שהמשחק **לא SCHEDULED או שהחל** (`start_time <= now()`) — חשיפה לפי זמן מאפשרת חשיפה גם למשחקים בלי `external_id` (ידידות) שה-status שלהם לא מתעדכן אוטומטית. ראה מיגרציה `021`.
 - נעילת ניחוש: `start_time > now() + INTERVAL '1 minute'` (server-side)
 - Golden bets נעולים אחרי `2026-06-11T18:00:00Z`
 
