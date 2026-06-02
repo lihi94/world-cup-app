@@ -109,11 +109,15 @@ export default function Dashboard() {
             </span>
             <button
               onClick={handleLogout}
-              className="text-base bg-black/30 hover:bg-black/50 backdrop-blur-sm w-8 h-8 rounded-full flex items-center justify-center transition border border-white/10"
+              className="bg-black/30 hover:bg-black/50 backdrop-blur-sm w-8 h-8 rounded-full flex items-center justify-center transition border border-white/10 text-white/80 hover:text-white"
               aria-label="יציאה"
               title="יציאה"
             >
-              🚪
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
             </button>
           </div>
         </div>
@@ -128,10 +132,9 @@ export default function Dashboard() {
               {profile?.avatar || '⚽'}
             </span>
             <div className="min-w-0">
-              <p className="text-emerald-200/90 text-sm font-medium">שלום 👋</p>
-              <h1 className="text-2xl font-black mt-0.5 leading-tight drop-shadow-lg truncate flex items-center gap-1">
+              <p className="text-emerald-200/80 text-sm font-medium">שלום</p>
+              <h1 className="text-2xl font-black mt-0.5 leading-tight drop-shadow-lg truncate">
                 {displayName(profile)}
-                <span className="text-xs text-emerald-200/60 opacity-0 group-hover:opacity-100 transition">✏️</span>
               </h1>
               {profile?.nickname && (
                 <p className="text-[11px] text-emerald-200/70 font-medium leading-none mt-0.5">@{profile.username}</p>
@@ -149,18 +152,22 @@ export default function Dashboard() {
 
       {/* Next match alert */}
       {nextMatch && nextMatch.team_a_id && (
-        <div className="relative bg-gradient-to-l from-amber-500/20 via-orange-500/15 to-transparent border border-amber-500/40 rounded-2xl p-3 flex items-center gap-3 animate-fade-in-up overflow-hidden" style={{ animationDelay: '0.1s' }}>
-          <div className="absolute inset-0 animate-shimmer pointer-events-none" />
-          <span className="text-2xl animate-pulse relative">⏰</span>
-          <div className="flex-1 min-w-0 relative">
-            <p className="text-[10px] text-amber-400 font-bold uppercase tracking-wider">המשחק הבא</p>
+        <div className="bg-gradient-to-l from-amber-500/15 to-transparent border border-amber-500/30 rounded-2xl p-3 flex items-center gap-3 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+          <span className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/25 flex items-center justify-center text-amber-300 shrink-0">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="9" />
+              <polyline points="12 7 12 12 15 14" />
+            </svg>
+          </span>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] text-amber-400/90 font-bold uppercase tracking-wider">המשחק הבא</p>
             <p className="text-sm font-bold text-amber-100 truncate">
               {nextMatch.team_a?.name_he ?? nextMatch.team_a?.name ?? '?'} נגד {nextMatch.team_b?.name_he ?? nextMatch.team_b?.name ?? '?'}
             </p>
           </div>
           {!myPredictions.has(nextMatch.id) && (
-            <span className="text-xs bg-amber-500 text-amber-950 font-black px-2.5 py-1 rounded-full shrink-0 animate-pulse relative shadow-lg">
-              חסר ניחוש!
+            <span className="text-xs bg-amber-500 text-amber-950 font-bold px-2.5 py-1 rounded-full shrink-0">
+              חסר ניחוש
             </span>
           )}
         </div>
@@ -178,7 +185,14 @@ export default function Dashboard() {
 
         {bettable.length === 0 ? (
           <div className="glass-card rounded-2xl py-12 flex flex-col items-center gap-3">
-            <span className="text-5xl animate-float">📅</span>
+            <span className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-gray-400">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" />
+                <line x1="3" y1="9" x2="21" y2="9" />
+                <line x1="8" y1="2" x2="8" y2="6" />
+                <line x1="16" y1="2" x2="16" y2="6" />
+              </svg>
+            </span>
             <p className="text-gray-300 text-sm">{he.noUpcoming}</p>
           </div>
         ) : (

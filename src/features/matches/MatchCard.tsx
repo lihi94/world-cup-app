@@ -1,7 +1,42 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { formatKickoff, locksInLabel, isPredictionOpen } from '../../utils/date'
 import { he } from '../../i18n/he'
 import type { Match, Prediction } from '../../types'
+
+/** Live, ticking countdown to kickoff. Shows DD·HH:MM:SS, or HH:MM:SS under a day. */
+function MatchCountdown({ startTime }: { startTime: string }) {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(t)
+  }, [])
+
+  const diff = new Date(startTime).getTime() - now
+  if (diff <= 0) return null // kicked off — handled by LIVE/score states
+
+  const total = Math.floor(diff / 1000)
+  const days = Math.floor(total / 86400)
+  const hours = Math.floor((total % 86400) / 3600)
+  const mins = Math.floor((total % 3600) / 60)
+  const secs = total % 60
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const clock = `${pad(hours)}:${pad(mins)}:${pad(secs)}`
+  const soon = days === 0 && hours < 1
+
+  return (
+    <div className={`mt-2 flex items-center justify-center gap-1.5 rounded-lg py-1 text-[11px] font-bold border ${
+      soon ? 'bg-amber-500/10 border-amber-500/25 text-amber-200' : 'bg-white/5 border-white/10 text-gray-300'
+    }`}>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="9" />
+        <polyline points="12 7 12 12 15 14" />
+      </svg>
+      <span className="tabular-nums">{days > 0 ? `${days} ימים · ${clock}` : clock}</span>
+      <span className={soon ? 'text-amber-300/70' : 'text-gray-500'}>לבעיטה</span>
+    </div>
+  )
+}
 
 interface MatchCardProps {
   match: Match
@@ -59,6 +94,9 @@ export default function MatchCard({ match, myPrediction }: MatchCardProps) {
           <span className="text-xs text-gray-400 font-medium">{formatKickoff(match.start_time)}</span>
         )}
       </div>
+
+      {/* Live countdown to kickoff (scheduled matches only) */}
+      {isScheduled && <MatchCountdown startTime={match.start_time} />}
 
       {/* Teams row */}
       <div className="flex items-center justify-between gap-2">
