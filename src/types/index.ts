@@ -86,7 +86,9 @@ export interface GoldenBet {
   user_id: string
   winner_team_id: string | null
   top_scorer_id: string | null
-  points_earned: number
+  winner_points: number      // +8 if champion correct
+  top_scorer_points: number  // +8 if top scorer correct
+  points_earned: number      // generated total = winner_points + top_scorer_points
   teams?: Team
   players?: Player
 }

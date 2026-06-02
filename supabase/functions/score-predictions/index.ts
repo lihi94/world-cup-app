@@ -112,16 +112,15 @@ Deno.serve(async (req) => {
       .select('*')
       .not('winner_team_id', 'is', null)
 
-    // Top scorer scoring is done manually by admin (API may not have final data instantly)
+    // Champion bet only — writes the dedicated winner_points column so it never
+    // clobbers top_scorer_points (scored separately via score_golden_top_scorer).
+    // points_earned is a generated total of both, so we must NOT write it here.
     for (const bet of bets ?? []) {
-      let betPts = bet.points_earned
-      // Only award winner points once (reset if re-scoring)
       const winnerCorrect = bet.winner_team_id === match.winner_id
-      betPts = winnerCorrect ? 8 : 0
 
       await supabase
         .from('golden_bets')
-        .update({ points_earned: betPts })
+        .update({ winner_points: winnerCorrect ? 8 : 0 })
         .eq('user_id', bet.user_id)
 
       await supabase.rpc('recalculate_user_points', { p_user_id: bet.user_id })
