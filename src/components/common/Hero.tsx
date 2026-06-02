@@ -48,18 +48,13 @@ export default function Hero({
       {/* Color overlay */}
       <div className={`absolute inset-0 ${OVERLAYS[overlay]}`} />
 
-      {/* Pattern overlay */}
+      {/* Subtle light pattern */}
       <div
-        className="absolute inset-0 opacity-30"
+        className="absolute inset-0 opacity-20"
         style={{
-          backgroundImage: `radial-gradient(circle at 20% 30%, rgba(255,255,255,0.1) 0%, transparent 40%),
-                            radial-gradient(circle at 80% 70%, rgba(255,255,255,0.08) 0%, transparent 40%)`,
+          backgroundImage: `radial-gradient(circle at 18% 25%, rgba(255,255,255,0.10) 0%, transparent 45%)`,
         }}
       />
-
-      {/* Animated soccer balls */}
-      <div className="absolute top-4 left-6 text-3xl opacity-20 animate-spin-slow">⚽</div>
-      <div className="absolute bottom-6 left-12 text-2xl opacity-15 animate-float">⚽</div>
 
       {/* Bottom gradient fade */}
       <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/40 to-transparent" />
