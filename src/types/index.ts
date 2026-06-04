@@ -75,6 +75,7 @@ export interface Prediction {
   pred_score_b: number | null
   pred_qualifier_id: string | null
   points_earned: number
+  is_auto: boolean   // true when the system auto-filled it (copied from the AI bot)
   created_at: string
   updated_at: string
   // Joined

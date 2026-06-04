@@ -98,6 +98,7 @@ src/
 ## נקודות חשובות
 
 ### ניקוד
+- **FRIENDLY: 0 — משחקי ידידות לא נספרים לטבלה** (ניחושים נשמרים ומוצגים, אבל ללא נקודות). ראה מיגרציות 020/024.
 - GROUP: exact=3, direction=2, miss=0
 - R16/QF/SF: exact=4, direction=3, miss=0, qualifier=+1
 - FINAL: exact=5, direction=4, miss=0, qualifier=+1
