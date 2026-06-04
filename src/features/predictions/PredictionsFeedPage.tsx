@@ -26,6 +26,24 @@ const STAGE_LABELS: Record<string, string> = {
   FRIENDLY: he.FRIENDLY, GROUP: he.GROUP, R32: he.R32, R16: he.R16, QF: he.QF, SF: he.SF, THIRD: he.THIRD, FINAL: he.FINAL,
 }
 
+type Outcome = 'exact' | 'direction' | 'miss'
+
+/** Classify a prediction against the final score: exact / right-direction / miss. */
+function predOutcome(pa: number | null, pb: number | null, sa: number | null, sb: number | null): Outcome | null {
+  if (pa == null || pb == null || sa == null || sb == null) return null
+  if (pa === sa && pb === sb) return 'exact'
+  if (Math.sign(pa - pb) === Math.sign(sa - sb)) return 'direction'
+  return 'miss'
+}
+
+const OUTCOME_RANK: Record<Outcome, number> = { exact: 0, direction: 1, miss: 2 }
+
+const OUTCOME_STYLE: Record<Outcome, { badge: string; icon: string; label: string }> = {
+  exact:     { badge: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40', icon: '🎯', label: 'מדויק' },
+  direction: { badge: 'bg-amber-500/15 text-amber-300 border-amber-500/30',       icon: '↗',  label: 'כיוון' },
+  miss:      { badge: 'bg-red-500/15 text-red-300 border-red-500/30',             icon: '✗',  label: 'טעות' },
+}
+
 export default function PredictionsFeedPage() {
   const { user } = useAuth()
   const [tab, setTab] = useState<Tab>('upcoming')
@@ -198,7 +216,7 @@ export default function PredictionsFeedPage() {
                             <p className="text-[10px] font-bold text-purple-300 uppercase tracking-wider mb-2">🤖 בוטים</p>
                             <div className="space-y-1.5">
                               {bots.map(p => (
-                                <PredRow key={p.id} pred={p} isMe={p.user_id === user?.id} isFinished={isFinished} />
+                                <PredRow key={p.id} pred={p} isMe={p.user_id === user?.id} isFinished={isFinished} scoreA={m.score_a} scoreB={m.score_b} />
                               ))}
                             </div>
                           </div>
@@ -209,13 +227,19 @@ export default function PredictionsFeedPage() {
                           <div className="px-4 py-3">
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">
                               👥 חברים
-                              {isFinished && <span className="mr-1 text-emerald-400 normal-case">· ממוין לפי נקודות</span>}
+                              {isFinished && <span className="mr-1 text-emerald-400 normal-case">· מדויק → כיוון → טעות</span>}
                             </p>
                             <div className="space-y-1.5">
                               {[...humans]
-                                .sort((a, b) => isFinished ? b.points_earned - a.points_earned : 0)
+                                .sort((a, b) => {
+                                  if (!isFinished) return 0
+                                  const ra = OUTCOME_RANK[predOutcome(a.pred_score_a, a.pred_score_b, m.score_a, m.score_b) ?? 'miss']
+                                  const rb = OUTCOME_RANK[predOutcome(b.pred_score_a, b.pred_score_b, m.score_a, m.score_b) ?? 'miss']
+                                  if (ra !== rb) return ra - rb
+                                  return b.points_earned - a.points_earned
+                                })
                                 .map((p, idx) => (
-                                  <PredRow key={p.id} pred={p} isMe={p.user_id === user?.id} isFinished={isFinished} rank={isFinished ? idx + 1 : undefined} />
+                                  <PredRow key={p.id} pred={p} isMe={p.user_id === user?.id} isFinished={isFinished} rank={isFinished ? idx + 1 : undefined} scoreA={m.score_a} scoreB={m.score_b} />
                                 ))}
                             </div>
                           </div>
@@ -262,13 +286,16 @@ function TabButton({ active, onClick, icon, label }: { active: boolean; onClick:
 }
 
 function PredRow({
-  pred, isMe, isFinished, rank,
+  pred, isMe, isFinished, rank, scoreA, scoreB,
 }: {
   pred: PredictionWithProfile; isMe: boolean; isFinished: boolean; rank?: number
+  scoreA?: number | null; scoreB?: number | null
 }) {
   const nameToShow = displayName(pred.profiles)
   const username = pred.profiles?.username ?? '—'
   const hasNickname = !!pred.profiles?.nickname && !pred.profiles?.is_bot
+  const outcome = isFinished ? predOutcome(pred.pred_score_a, pred.pred_score_b, scoreA ?? null, scoreB ?? null) : null
+  const oc = outcome ? OUTCOME_STYLE[outcome] : null
   return (
     <div className={`flex items-center gap-2 rounded-lg px-2 py-1.5 ${isMe ? 'bg-emerald-500/10 ring-1 ring-emerald-500/30' : ''}`}>
       {rank !== undefined && (
@@ -291,16 +318,14 @@ function PredRow({
           אוטומטי
         </span>
       )}
-      <span className="text-xs font-black text-gray-100 bg-white/5 border border-white/10 px-2 py-0.5 rounded tabular-nums">
+      <span className={`text-xs font-black px-2 py-0.5 rounded border tabular-nums shrink-0 ${
+        oc ? oc.badge : 'text-gray-100 bg-white/5 border-white/10'
+      }`}>
         {pred.pred_score_a ?? '?'}–{pred.pred_score_b ?? '?'}
       </span>
-      {isFinished && (
-        <span className={`text-[10px] font-black px-1.5 py-0.5 rounded shrink-0 ${
-          pred.points_earned > 0
-            ? 'bg-emerald-500/20 text-emerald-300'
-            : 'bg-gray-700/40 text-gray-500'
-        }`}>
-          +{pred.points_earned}
+      {oc && (
+        <span className={`text-[10px] font-black px-1.5 py-0.5 rounded border shrink-0 ${oc.badge}`}>
+          {oc.icon}{pred.points_earned > 0 ? ` +${pred.points_earned}` : ` ${oc.label}`}
         </span>
       )}
     </div>
