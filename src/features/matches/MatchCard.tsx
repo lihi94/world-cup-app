@@ -1,39 +1,50 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { formatKickoff, locksInLabel, isPredictionOpen } from '../../utils/date'
+import { formatKickoff, locksInLabel, isPredictionOpen, dateKey } from '../../utils/date'
 import { he } from '../../i18n/he'
 import type { Match, Prediction } from '../../types'
 
-/** Live, ticking countdown to kickoff. Shows DD·HH:MM:SS, or HH:MM:SS under a day. */
+// Distinct but soft color per World Cup group (A–L) — used for the group letter.
+const GROUP_COLORS: Record<string, string> = {
+  A: 'text-rose-300',  B: 'text-orange-300', C: 'text-amber-300',   D: 'text-yellow-300',
+  E: 'text-lime-300',  F: 'text-green-300',  G: 'text-emerald-300', H: 'text-teal-300',
+  I: 'text-cyan-300',  J: 'text-sky-300',    K: 'text-indigo-300',  L: 'text-fuchsia-300',
+}
+
+/** Countdown to kickoff in days / hours / minutes (no seconds). Bold on match day. */
 function MatchCountdown({ startTime }: { startTime: string }) {
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 1000)
+    const t = setInterval(() => setNow(Date.now()), 30_000)
     return () => clearInterval(t)
   }, [])
 
   const diff = new Date(startTime).getTime() - now
   if (diff <= 0) return null // kicked off — handled by LIVE/score states
 
-  const total = Math.floor(diff / 1000)
-  const days = Math.floor(total / 86400)
-  const hours = Math.floor((total % 86400) / 3600)
-  const mins = Math.floor((total % 3600) / 60)
-  const secs = total % 60
-  const pad = (n: number) => String(n).padStart(2, '0')
-  const clock = `${pad(hours)}:${pad(mins)}:${pad(secs)}`
-  const soon = days === 0 && hours < 1
+  const totalMin = Math.floor(diff / 60_000)
+  const days = Math.floor(totalMin / 1440)
+  const hours = Math.floor((totalMin % 1440) / 60)
+  const mins = totalMin % 60
+
+  const parts: string[] = []
+  if (days > 0) parts.push(`${days} ימים`)
+  if (days > 0 || hours > 0) parts.push(`${hours} שע׳`)
+  parts.push(`${mins} דק׳`)
+
+  const isMatchDay = dateKey(startTime) === dateKey(new Date(now).toISOString())
 
   return (
-    <div className={`mt-2 flex items-center justify-center gap-1.5 rounded-lg py-1 text-[11px] font-bold border ${
-      soon ? 'bg-amber-500/10 border-amber-500/25 text-amber-200' : 'bg-white/5 border-white/10 text-gray-300'
+    <div className={`mt-2 flex items-center justify-center gap-1.5 rounded-lg py-1 text-[11px] border ${
+      isMatchDay
+        ? 'bg-amber-500/15 border-amber-500/30 text-amber-200 font-black'
+        : 'bg-white/5 border-white/10 text-gray-300 font-bold'
     }`}>
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="9" />
         <polyline points="12 7 12 12 15 14" />
       </svg>
-      <span className="tabular-nums">{days > 0 ? `${days} ימים · ${clock}` : clock}</span>
-      <span className={soon ? 'text-amber-300/70' : 'text-gray-500'}>לבעיטה</span>
+      <span className="tabular-nums">בעוד {parts.join(' ')}</span>
     </div>
   )
 }
@@ -173,6 +184,16 @@ export default function MatchCard({ match, myPrediction }: MatchCardProps) {
           </div>
         ) : null}
       </div>
+
+      {/* Group label (group stage only) — letter colored per group */}
+      {match.stage === 'GROUP' && (match.team_a?.group_name ?? match.team_b?.group_name) && (
+        <p className="mt-2 text-center text-[11px] text-gray-400 font-medium">
+          בית{' '}
+          <span className={`font-bold ${GROUP_COLORS[(match.team_a?.group_name ?? match.team_b?.group_name) as string] ?? 'text-gray-300'}`}>
+            {match.team_a?.group_name ?? match.team_b?.group_name}
+          </span>
+        </p>
+      )}
     </Link>
   )
 }

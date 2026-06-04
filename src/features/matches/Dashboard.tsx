@@ -96,9 +96,6 @@ export default function Dashboard() {
   }
 
   const totalPredicted = myPredictions.size
-  const nextMatch = bettable[0] ?? upcomingMatches[0]
-  // Soonest upcoming match the user still hasn't predicted (so they don't miss it).
-  const nextUnpredicted = bettable.find(m => !myPredictions.has(m.id)) ?? null
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-5 pb-24 space-y-5">
@@ -150,25 +147,8 @@ export default function Dashboard() {
         </div>
       </Hero>
 
-      {/* Next match (right) + soonest unpredicted match (left) */}
-      {nextMatch && nextMatch.team_a_id && (
-        <div className="flex items-stretch gap-2 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-          <NextPane
-            to={`/matches/${nextMatch.id}`}
-            label="המשחק הבא"
-            match={nextMatch}
-            urgent={!myPredictions.has(nextMatch.id)}
-          />
-          {nextUnpredicted && nextUnpredicted.id !== nextMatch.id && (
-            <NextPane
-              to={`/matches/${nextUnpredicted.id}`}
-              label="ממתין לניחוש"
-              match={nextUnpredicted}
-              urgent
-            />
-          )}
-        </div>
-      )}
+      {/* System message: prediction reminder */}
+      <PredictionReminder matches={bettable} predictedIds={myPredictions} />
 
       {/* Bettable matches grouped by date */}
       <section className="animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
@@ -257,38 +237,86 @@ export default function Dashboard() {
   )
 }
 
-function NextPane({ to, label, match, urgent }: { to: string; label: string; match: Match; urgent: boolean }) {
-  const a = match.team_a?.name_he ?? match.team_a?.name ?? '?'
-  const b = match.team_b?.name_he ?? match.team_b?.name ?? '?'
+const teamName = (t?: Match['team_a']) => t?.name_he ?? t?.name ?? '?'
+
+/**
+ * System-message banner: reminds the user of the soonest match they haven't
+ * predicted, which day it's on, and any other unpredicted matches that same
+ * day. Escalates (red) when that match is TODAY. Calm green when nothing's left.
+ */
+function Matchup({ a, b }: { a: Match['team_a']; b: Match['team_b'] }) {
+  return (
+    <><bdi>{teamName(a)}</bdi> <span className="text-gray-500">נגד</span> <bdi>{teamName(b)}</bdi></>
+  )
+}
+
+function PredictionReminder({ matches, predictedIds }: { matches: Match[]; predictedIds: Map<string, Prediction> }) {
+  // Only nag about matches within the next 3 days.
+  const in3 = Date.now() + 3 * 86_400_000
+  const toPredict = matches.filter(m => !predictedIds.has(m.id) && new Date(m.start_time).getTime() <= in3)
+
+  // ── Info mode: nothing to predict in the next 3 days → just show the next match
+  if (toPredict.length === 0) {
+    const next = matches[0]
+    if (!next) return null
+    return (
+      <div className="rounded-2xl p-3.5 bg-gradient-to-l from-emerald-500/12 to-transparent border border-emerald-500/30 flex items-center gap-2.5 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+        <span className="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/25 text-emerald-300 flex items-center justify-center shrink-0">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" /></svg>
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-400/90">המשחק הבא</p>
+          <p className="text-sm font-bold text-gray-100 truncate"><Matchup a={next.team_a} b={next.team_b} /></p>
+          <p className="text-[11px] text-gray-400 mt-0.5">{formatDateHeader(next.start_time)} · כל הניחושים הקרובים מולאו ✓</p>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Nag mode: there are matches to predict in the next 3 days
+  const soonest = toPredict[0]
+  const dayKey = dateKey(soonest.start_time)
+  const isToday = dayKey === dateKey(new Date().toISOString())
+  const sameDay = toPredict.filter(m => m.id !== soonest.id && dateKey(m.start_time) === dayKey)
+
   return (
     <Link
-      to={to}
-      className={`flex-1 min-w-0 rounded-2xl p-3 border flex items-center gap-2.5 transition active:scale-[0.98] ${
-        urgent
-          ? 'bg-gradient-to-l from-amber-500/20 to-transparent border-amber-500/40 hover:border-amber-400/60'
-          : 'bg-gradient-to-l from-emerald-500/12 to-transparent border-emerald-500/30 hover:border-emerald-400/50'
+      to={`/matches/${soonest.id}`}
+      className={`block rounded-2xl p-3.5 border animate-fade-in-up transition active:scale-[0.99] ${
+        isToday
+          ? 'bg-gradient-to-l from-red-500/20 via-amber-500/10 to-transparent border-red-500/40 ring-1 ring-red-500/20'
+          : 'bg-gradient-to-l from-amber-500/20 to-transparent border-amber-500/40'
       }`}
+      style={{ animationDelay: '0.1s' }}
     >
-      <span className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${
-        urgent ? 'bg-amber-500/15 border-amber-500/25 text-amber-300' : 'bg-emerald-500/15 border-emerald-500/25 text-emerald-300'
-      }`}>
-        {urgent ? (
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 9v4" /><path d="M12 17h.01" /><circle cx="12" cy="12" r="9" />
+      <div className="flex items-center gap-2.5">
+        <span className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${
+          isToday ? 'bg-red-500/20 border-red-500/30 text-red-300' : 'bg-amber-500/15 border-amber-500/25 text-amber-300'
+        }`}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" />
           </svg>
-        ) : (
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" />
-          </svg>
-        )}
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className={`text-[9px] font-bold uppercase tracking-wider ${urgent ? 'text-amber-400/90' : 'text-emerald-400/90'}`}>{label}</p>
-        <p className="text-xs font-bold text-gray-100 truncate">{a} <span className="text-gray-500">×</span> {b}</p>
-        <p className={`text-[10px] font-bold mt-0.5 ${urgent ? 'text-amber-300' : 'text-emerald-300/80'}`}>
-          {urgent ? 'חסר ניחוש →' : '✓ ניחשת'}
-        </p>
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className={`text-[10px] font-bold uppercase tracking-wider ${isToday ? 'text-red-300' : 'text-amber-400/90'}`}>
+            {isToday ? 'חסר ניחוש — היום!' : 'תזכורת: חסר ניחוש'}
+          </p>
+          <p className="text-sm font-bold text-gray-100 truncate"><Matchup a={soonest.team_a} b={soonest.team_b} /></p>
+          <p className="text-[11px] text-gray-400 mt-0.5">
+            {isToday ? 'היום' : formatDateHeader(soonest.start_time)}
+            {sameDay.length > 0 && ` · ועוד ${sameDay.length} באותו יום`}
+          </p>
+        </div>
+        <span className={`text-xs font-black px-2.5 py-1 rounded-full shrink-0 ${isToday ? 'bg-red-500 text-white' : 'bg-amber-500 text-amber-950'}`}>
+          נחש ←
+        </span>
       </div>
+
+      {sameDay.length > 0 && (
+        <p className="text-[10px] text-gray-500 mt-2.5 pt-2.5 border-t border-white/10 truncate">
+          גם באותו יום: {sameDay.map(m => `${teamName(m.team_a)}–${teamName(m.team_b)}`).join(' · ')}
+        </p>
+      )}
     </Link>
   )
 }
