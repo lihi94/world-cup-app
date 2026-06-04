@@ -244,27 +244,40 @@ const teamName = (t?: Match['team_a']) => t?.name_he ?? t?.name ?? '?'
  * predicted, which day it's on, and any other unpredicted matches that same
  * day. Escalates (red) when that match is TODAY. Calm green when nothing's left.
  */
-function PredictionReminder({ matches, predictedIds }: { matches: Match[]; predictedIds: Map<string, Prediction> }) {
-  const unpredicted = matches.filter(m => !predictedIds.has(m.id))
+function Matchup({ a, b }: { a: Match['team_a']; b: Match['team_b'] }) {
+  return (
+    <><bdi>{teamName(a)}</bdi> <span className="text-gray-500">נגד</span> <bdi>{teamName(b)}</bdi></>
+  )
+}
 
-  if (unpredicted.length === 0) {
+function PredictionReminder({ matches, predictedIds }: { matches: Match[]; predictedIds: Map<string, Prediction> }) {
+  // Only nag about matches within the next 3 days.
+  const in3 = Date.now() + 3 * 86_400_000
+  const toPredict = matches.filter(m => !predictedIds.has(m.id) && new Date(m.start_time).getTime() <= in3)
+
+  // ── Info mode: nothing to predict in the next 3 days → just show the next match
+  if (toPredict.length === 0) {
+    const next = matches[0]
+    if (!next) return null
     return (
-      <div className="rounded-2xl p-3.5 bg-emerald-500/10 border border-emerald-500/30 flex items-center gap-2.5 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+      <div className="rounded-2xl p-3.5 bg-gradient-to-l from-emerald-500/12 to-transparent border border-emerald-500/30 flex items-center gap-2.5 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
         <span className="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/25 text-emerald-300 flex items-center justify-center shrink-0">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" /></svg>
         </span>
-        <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-400/90">הכול מעודכן</p>
-          <p className="text-sm font-bold text-emerald-100">כל הניחושים מולאו ✓</p>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-400/90">המשחק הבא</p>
+          <p className="text-sm font-bold text-gray-100 truncate"><Matchup a={next.team_a} b={next.team_b} /></p>
+          <p className="text-[11px] text-gray-400 mt-0.5">{formatDateHeader(next.start_time)} · כל הניחושים הקרובים מולאו ✓</p>
         </div>
       </div>
     )
   }
 
-  const soonest = unpredicted[0]
+  // ── Nag mode: there are matches to predict in the next 3 days
+  const soonest = toPredict[0]
   const dayKey = dateKey(soonest.start_time)
   const isToday = dayKey === dateKey(new Date().toISOString())
-  const sameDay = unpredicted.filter(m => m.id !== soonest.id && dateKey(m.start_time) === dayKey)
+  const sameDay = toPredict.filter(m => m.id !== soonest.id && dateKey(m.start_time) === dayKey)
 
   return (
     <Link
@@ -288,9 +301,7 @@ function PredictionReminder({ matches, predictedIds }: { matches: Match[]; predi
           <p className={`text-[10px] font-bold uppercase tracking-wider ${isToday ? 'text-red-300' : 'text-amber-400/90'}`}>
             {isToday ? 'חסר ניחוש — היום!' : 'תזכורת: חסר ניחוש'}
           </p>
-          <p className="text-sm font-bold text-gray-100 truncate">
-            {teamName(soonest.team_a)} <span className="text-gray-500">נגד</span> {teamName(soonest.team_b)}
-          </p>
+          <p className="text-sm font-bold text-gray-100 truncate"><Matchup a={soonest.team_a} b={soonest.team_b} /></p>
           <p className="text-[11px] text-gray-400 mt-0.5">
             {isToday ? 'היום' : formatDateHeader(soonest.start_time)}
             {sameDay.length > 0 && ` · ועוד ${sameDay.length} באותו יום`}

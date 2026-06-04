@@ -4,11 +4,11 @@ import { formatKickoff, locksInLabel, isPredictionOpen, dateKey } from '../../ut
 import { he } from '../../i18n/he'
 import type { Match, Prediction } from '../../types'
 
-// Distinct color per World Cup group (A–L) — used for the small group letter.
+// Distinct but soft color per World Cup group (A–L) — used for the group letter.
 const GROUP_COLORS: Record<string, string> = {
-  A: 'text-red-400',   B: 'text-orange-400', C: 'text-amber-400',   D: 'text-yellow-400',
-  E: 'text-lime-400',  F: 'text-green-400',  G: 'text-emerald-400', H: 'text-teal-400',
-  I: 'text-cyan-400',  J: 'text-blue-400',   K: 'text-indigo-400',  L: 'text-fuchsia-400',
+  A: 'text-rose-300',  B: 'text-orange-300', C: 'text-amber-300',   D: 'text-yellow-300',
+  E: 'text-lime-300',  F: 'text-green-300',  G: 'text-emerald-300', H: 'text-teal-300',
+  I: 'text-cyan-300',  J: 'text-sky-300',    K: 'text-indigo-300',  L: 'text-fuchsia-300',
 }
 
 /** Countdown to kickoff in days / hours / minutes (no seconds). Bold on match day. */
@@ -187,9 +187,9 @@ export default function MatchCard({ match, myPrediction }: MatchCardProps) {
 
       {/* Group label (group stage only) — letter colored per group */}
       {match.stage === 'GROUP' && (match.team_a?.group_name ?? match.team_b?.group_name) && (
-        <p className="mt-2 text-center text-[10px] text-gray-500 font-medium">
+        <p className="mt-2 text-center text-[11px] text-gray-400 font-medium">
           בית{' '}
-          <span className={`font-black ${GROUP_COLORS[(match.team_a?.group_name ?? match.team_b?.group_name) as string] ?? 'text-gray-300'}`}>
+          <span className={`font-bold ${GROUP_COLORS[(match.team_a?.group_name ?? match.team_b?.group_name) as string] ?? 'text-gray-300'}`}>
             {match.team_a?.group_name ?? match.team_b?.group_name}
           </span>
         </p>
