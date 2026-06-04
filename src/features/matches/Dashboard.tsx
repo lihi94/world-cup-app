@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../../services/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import MatchCard from './MatchCard'
@@ -96,6 +97,8 @@ export default function Dashboard() {
 
   const totalPredicted = myPredictions.size
   const nextMatch = bettable[0] ?? upcomingMatches[0]
+  // Soonest upcoming match the user still hasn't predicted (so they don't miss it).
+  const nextUnpredicted = bettable.find(m => !myPredictions.has(m.id)) ?? null
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-5 pb-24 space-y-5">
@@ -147,21 +150,22 @@ export default function Dashboard() {
         </div>
       </Hero>
 
-      {/* Next match alert */}
+      {/* Next match (right) + soonest unpredicted match (left) */}
       {nextMatch && nextMatch.team_a_id && (
-        <div className="relative bg-gradient-to-l from-amber-500/20 via-orange-500/15 to-transparent border border-amber-500/40 rounded-2xl p-3 flex items-center gap-3 animate-fade-in-up overflow-hidden" style={{ animationDelay: '0.1s' }}>
-          <div className="absolute inset-0 animate-shimmer pointer-events-none" />
-          <span className="text-2xl animate-pulse relative">⏰</span>
-          <div className="flex-1 min-w-0 relative">
-            <p className="text-[10px] text-amber-400 font-bold uppercase tracking-wider">המשחק הבא</p>
-            <p className="text-sm font-bold text-amber-100 truncate">
-              {nextMatch.team_a?.name_he ?? nextMatch.team_a?.name ?? '?'} נגד {nextMatch.team_b?.name_he ?? nextMatch.team_b?.name ?? '?'}
-            </p>
-          </div>
-          {!myPredictions.has(nextMatch.id) && (
-            <span className="text-xs bg-amber-500 text-amber-950 font-black px-2.5 py-1 rounded-full shrink-0 animate-pulse relative shadow-lg">
-              חסר ניחוש!
-            </span>
+        <div className="flex items-stretch gap-2 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+          <NextPane
+            to={`/matches/${nextMatch.id}`}
+            label="המשחק הבא"
+            match={nextMatch}
+            urgent={!myPredictions.has(nextMatch.id)}
+          />
+          {nextUnpredicted && nextUnpredicted.id !== nextMatch.id && (
+            <NextPane
+              to={`/matches/${nextUnpredicted.id}`}
+              label="ממתין לניחוש"
+              match={nextUnpredicted}
+              urgent
+            />
           )}
         </div>
       )}
@@ -250,6 +254,42 @@ export default function Dashboard() {
         />
       )}
     </div>
+  )
+}
+
+function NextPane({ to, label, match, urgent }: { to: string; label: string; match: Match; urgent: boolean }) {
+  const a = match.team_a?.name_he ?? match.team_a?.name ?? '?'
+  const b = match.team_b?.name_he ?? match.team_b?.name ?? '?'
+  return (
+    <Link
+      to={to}
+      className={`flex-1 min-w-0 rounded-2xl p-3 border flex items-center gap-2.5 transition active:scale-[0.98] ${
+        urgent
+          ? 'bg-gradient-to-l from-amber-500/20 to-transparent border-amber-500/40 hover:border-amber-400/60'
+          : 'bg-gradient-to-l from-emerald-500/12 to-transparent border-emerald-500/30 hover:border-emerald-400/50'
+      }`}
+    >
+      <span className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${
+        urgent ? 'bg-amber-500/15 border-amber-500/25 text-amber-300' : 'bg-emerald-500/15 border-emerald-500/25 text-emerald-300'
+      }`}>
+        {urgent ? (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 9v4" /><path d="M12 17h.01" /><circle cx="12" cy="12" r="9" />
+          </svg>
+        ) : (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" />
+          </svg>
+        )}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className={`text-[9px] font-bold uppercase tracking-wider ${urgent ? 'text-amber-400/90' : 'text-emerald-400/90'}`}>{label}</p>
+        <p className="text-xs font-bold text-gray-100 truncate">{a} <span className="text-gray-500">×</span> {b}</p>
+        <p className={`text-[10px] font-bold mt-0.5 ${urgent ? 'text-amber-300' : 'text-emerald-300/80'}`}>
+          {urgent ? 'חסר ניחוש →' : '✓ ניחשת'}
+        </p>
+      </div>
+    </Link>
   )
 }
 
