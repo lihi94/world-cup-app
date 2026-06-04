@@ -34,8 +34,10 @@ export default function PredictionForm({ match, existing, onSave }: PredictionFo
   }, [])
 
   async function handleSubmit() {
-    const a = parseInt(scoreA)
-    const b = parseInt(scoreB)
+    // Empty input means the default 0 (the field shows "0" as placeholder),
+    // so a 0–0 prediction is savable without touching the stepper.
+    const a = scoreA.trim() === '' ? 0 : parseInt(scoreA)
+    const b = scoreB.trim() === '' ? 0 : parseInt(scoreB)
     if (isNaN(a) || isNaN(b) || a < 0 || b < 0) {
       setError('יש להזין תוצאה תקינה')
       return

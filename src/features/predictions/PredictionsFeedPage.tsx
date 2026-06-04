@@ -41,6 +41,8 @@ export default function PredictionsFeedPage() {
   async function load() {
     setLoading(true)
     const now = new Date().toISOString()
+    // Upcoming tab shows only the next 3 days (inclusive).
+    const in3Days = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
 
     let q = supabase
       .from('matches')
@@ -51,7 +53,7 @@ export default function PredictionsFeedPage() {
     } else if (tab === 'live') {
       q = q.eq('status', 'IN_PLAY').order('start_time', { ascending: true })
     } else {
-      q = q.eq('status', 'SCHEDULED').gte('start_time', now)
+      q = q.eq('status', 'SCHEDULED').gte('start_time', now).lte('start_time', in3Days)
         .not('team_a_id', 'is', null)
         .order('start_time', { ascending: true })
         .limit(20)
@@ -281,6 +283,14 @@ function PredRow({
           {hasNickname && <span className="text-[9px] text-gray-500 mr-1 font-normal">@{username}</span>}
         </span>
       </span>
+      {pred.is_auto && (
+        <span
+          className="text-[9px] font-bold text-amber-300 bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 rounded shrink-0"
+          title="המשתמש לא ניחש — המערכת מילאה אוטומטית לפי ניחוש הבוט"
+        >
+          אוטומטי
+        </span>
+      )}
       <span className="text-xs font-black text-gray-100 bg-white/5 border border-white/10 px-2 py-0.5 rounded tabular-nums">
         {pred.pred_score_a ?? '?'}–{pred.pred_score_b ?? '?'}
       </span>

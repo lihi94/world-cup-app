@@ -3,6 +3,15 @@ import { calculatePoints } from './scoring'
 
 // Critical: exact score must return TOTAL points, not direction+exact cumulative.
 
+describe('calculatePoints — FRIENDLY (never scores)', () => {
+  it('exact score still returns 0', () => {
+    expect(calculatePoints(2, 1, null, 2, 1, null, 'FRIENDLY')).toBe(0)
+  })
+  it('correct direction still returns 0', () => {
+    expect(calculatePoints(2, 0, null, 3, 1, null, 'FRIENDLY')).toBe(0)
+  })
+})
+
 describe('calculatePoints — GROUP stage', () => {
   it('exact score returns 3, not 5', () => {
     expect(calculatePoints(2, 1, null, 2, 1, null, 'GROUP')).toBe(3)

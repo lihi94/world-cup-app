@@ -25,10 +25,12 @@ function calculatePoints(
   const actualDir = Math.sign(actualA - actualB)
   const isCorrectDir = predDir === actualDir
 
+  // FRIENDLY = pre-tournament warmup — does NOT count for the league.
+  if (stage === 'FRIENDLY') return 0
+
   let pts = 0
 
-  if (stage === 'GROUP' || stage === 'FRIENDLY') {
-    // FRIENDLY = pre-tournament warmup match. Same scoring as group stage.
+  if (stage === 'GROUP') {
     pts = isExact ? 3 : isCorrectDir ? 2 : 0
   } else if (stage === 'FINAL') {
     pts = isExact ? 5 : isCorrectDir ? 4 : 0
