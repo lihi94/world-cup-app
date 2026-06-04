@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../services/supabase'
 import { useAuth } from '../../hooks/useAuth'
+import { useLeaderboard } from '../../hooks/useLeaderboard'
 import MatchCard from './MatchCard'
 import Spinner from '../../components/common/Spinner'
 import Hero from '../../components/common/Hero'
@@ -20,6 +21,7 @@ async function handleLogout() {
 
 export default function Dashboard() {
   const { user, profile, reloadProfile } = useAuth()
+  const { profiles: lbProfiles } = useLeaderboard()
   const [upcomingMatches, setUpcomingMatches] = useState<Match[]>([])
   const [myPredictions, setMyPredictions] = useState<Map<string, Prediction>>(new Map())
   const [loading, setLoading] = useState(true)
@@ -95,7 +97,12 @@ export default function Dashboard() {
     return <div className="flex justify-center items-center min-h-screen"><Spinner size="lg" /></div>
   }
 
-  const totalPredicted = myPredictions.size
+  const myRankIdx = lbProfiles.findIndex(p => p.id === user?.id)
+  const myRank = myRankIdx >= 0 ? myRankIdx + 1 : null
+  const totalPlayers = lbProfiles.length
+  const upcomingCount = bettable.length
+  const predictedUpcoming = bettable.filter(m => myPredictions.has(m.id)).length
+  const progressPct = upcomingCount > 0 ? Math.round((predictedUpcoming / upcomingCount) * 100) : 0
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-5 pb-24 space-y-5">
@@ -140,11 +147,43 @@ export default function Dashboard() {
           </button>
         </div>
 
-        <div className="flex items-center gap-2 mt-4">
-          <StatBadge label="ניקוד" value={profile?.total_points ?? 0} />
-          <StatBadge label="ניחושים" value={totalPredicted} />
-          <StatBadge label="זמינים" value={bettable.length} />
+        {/* Rank + points */}
+        <div className="flex items-stretch gap-2 mt-4">
+          <Link
+            to="/leaderboard"
+            className="flex-1 bg-black/35 backdrop-blur-md rounded-2xl px-3 py-2 border border-white/15 shadow-lg active:scale-[0.98] transition"
+          >
+            <p className="text-[9px] text-amber-200/90 uppercase tracking-wider font-bold flex items-center gap-1">
+              <span>🏆</span> דירוג
+            </p>
+            <p className="text-2xl font-black leading-none mt-0.5 drop-shadow tabular-nums">
+              {myRank ? `#${myRank}` : '—'}
+              {totalPlayers > 0 && <span className="text-sm text-white/55 font-bold"> / {totalPlayers}</span>}
+            </p>
+          </Link>
+          <div className="flex-1 bg-black/35 backdrop-blur-md rounded-2xl px-3 py-2 border border-white/15 shadow-lg">
+            <p className="text-[9px] text-emerald-200/90 uppercase tracking-wider font-bold">נקודות</p>
+            <p className="text-2xl font-black leading-none mt-0.5 drop-shadow tabular-nums">{profile?.total_points ?? 0}</p>
+          </div>
         </div>
+
+        {/* Prediction progress for upcoming matches */}
+        {upcomingCount > 0 && (
+          <div className="mt-2.5 bg-black/30 backdrop-blur-md rounded-2xl px-3 py-2.5 border border-white/15 shadow-lg">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[10px] text-white/85 font-bold uppercase tracking-wider">ניחושים למשחקים הקרובים</span>
+              <span className="text-xs font-black text-white tabular-nums">{predictedUpcoming}/{upcomingCount}</span>
+            </div>
+            <div className="h-2 w-full rounded-full bg-white/15 overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${
+                  progressPct === 100 ? 'bg-gradient-to-r from-emerald-400 to-emerald-500' : 'bg-gradient-to-r from-amber-400 to-amber-500'
+                }`}
+                style={{ width: `${Math.max(progressPct, predictedUpcoming > 0 ? 6 : 0)}%` }}
+              />
+            </div>
+          </div>
+        )}
       </Hero>
 
       {/* System message: prediction reminder */}
@@ -318,14 +357,5 @@ function PredictionReminder({ matches, predictedIds }: { matches: Match[]; predi
         </p>
       )}
     </Link>
-  )
-}
-
-function StatBadge({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="flex-1 bg-black/35 backdrop-blur-md rounded-2xl px-3 py-2 border border-white/15 shadow-lg">
-      <p className="text-[9px] text-emerald-200/90 uppercase tracking-wider font-bold">{label}</p>
-      <p className="text-2xl font-black leading-none mt-0.5 drop-shadow">{value}</p>
-    </div>
   )
 }
