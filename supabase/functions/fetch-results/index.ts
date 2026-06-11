@@ -153,6 +153,80 @@ Deno.serve(async () => {
     }
   }
 
+  // ── ESPN fallback ─────────────────────────────────────────────────────────
+  // football-data's free tier serves stale, flapping replicas — the 2026
+  // opener sat on "FINISHED, fullTime: null" for hours while other replicas
+  // said TIMED with data from two days earlier. ESPN's public scoreboard
+  // needs no API key and updates live, so any match that kicked off ≥90
+  // minutes ago and still has no score gets completed from ESPN instead.
+  const nowMs = Date.now()
+  const { data: pending } = await supabase
+    .from('matches')
+    .select('id, external_id, start_time, team_a_id, team_b_id, team_a:teams!team_a_id(name), team_b:teams!team_b_id(name)')
+    .lt('start_time', new Date(nowMs - 1.5 * 3_600_000).toISOString())
+    .gt('start_time', new Date(nowMs - 48 * 3_600_000).toISOString())
+    .is('score_a', null)
+    .not('external_id', 'is', null)
+
+  let espnFixed = 0
+  if (pending && pending.length > 0) {
+    // One scoreboard call per distinct UTC date among the pending matches
+    const dates = [...new Set(pending.map(p => p.start_time.slice(0, 10).replace(/-/g, '')))]
+    const events: any[] = []
+    for (const d of dates) {
+      try {
+        const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=${d}`)
+        if (r.ok) events.push(...((await r.json()).events ?? []))
+      } catch (_) { /* ESPN down — primary source will retry next tick */ }
+    }
+
+    // Loose name matching: shared token prefix handles naming gaps like
+    // "Korea Republic" vs "South Korea" or "Czech Republic" vs "Czechia".
+    const tokens = (s: string) =>
+      s.toLowerCase().replace(/[^a-z ]/g, '').split(/\s+/).filter(w => w.length >= 4)
+    const namesOverlap = (x?: string, y?: string) => {
+      if (!x || !y) return false
+      const tx = tokens(x), ty = tokens(y)
+      return tx.some(a => ty.some(b => a.startsWith(b.slice(0, 5)) || b.startsWith(a.slice(0, 5))))
+    }
+
+    for (const p of pending) {
+      const kickoff = new Date(p.start_time).getTime()
+      const candidates = events.filter(e =>
+        e.status?.type?.completed &&
+        Math.abs(new Date(e.date).getTime() - kickoff) < 30 * 60_000
+      )
+
+      for (const ev of candidates) {
+        const comp = ev.competitions?.[0]
+        const home = comp?.competitors?.find((c: any) => c.homeAway === 'home')
+        const away = comp?.competitors?.find((c: any) => c.homeAway === 'away')
+        if (!home || !away) continue
+
+        const aName = (p as any).team_a?.name
+        const bName = (p as any).team_b?.name
+        const aligned = namesOverlap(home.team?.displayName, aName) && namesOverlap(away.team?.displayName, bName)
+        const swapped = namesOverlap(home.team?.displayName, bName) && namesOverlap(away.team?.displayName, aName)
+        if (!aligned && !swapped) continue
+
+        const hs = parseInt(home.score), as_ = parseInt(away.score)
+        if (isNaN(hs) || isNaN(as_)) continue
+        const scoreA = aligned ? hs : as_
+        const scoreB = aligned ? as_ : hs
+        const winnerId = scoreA > scoreB ? p.team_a_id : scoreB > scoreA ? p.team_b_id : null
+
+        await supabase
+          .from('matches')
+          .update({ status: 'FINISHED', score_a: scoreA, score_b: scoreB, winner_id: winnerId })
+          .eq('id', p.id)
+
+        newlyFinished.push(p.external_id as number)
+        espnFixed++
+        break
+      }
+    }
+  }
+
   // Trigger scoring for each newly finished match
   for (const externalId of newlyFinished) {
     await fetch(
@@ -217,7 +291,7 @@ Deno.serve(async () => {
   }
 
   return new Response(
-    JSON.stringify({ updated: matches.length, scored: newlyFinished.length, oddsRefreshed }),
+    JSON.stringify({ updated: matches.length, scored: newlyFinished.length, espnFixed, oddsRefreshed }),
     { headers: { 'Content-Type': 'application/json' } }
   )
 })

@@ -41,9 +41,15 @@ npm run test       # טסטים (vitest)
 
 | Function | Version | תפקיד |
 |----------|---------|--------|
-| `fetch-results` | v6 | מעדכן תוצאות כל **5 דקות** (pg_cron job id=2) |
-| `fetch-odds` | v5 | מושך יחסי הימורים מ-The Odds API |
-| `score-predictions` | v2 | מחשב נקודות לאחר סיום משחק (idempotent — קובע points_earned, לא incremental) |
+| `fetch-results` | v11 | מעדכן תוצאות כל **5 דקות** (pg_cron job id=2) |
+| `fetch-odds` | v6 | מושך יחסי הימורים מ-The Odds API |
+| `score-predictions` | v6 | מחשב נקודות לאחר סיום משחק (idempotent — קובע points_earned, לא incremental) |
+| `debug-match` | v2 | כלי דיבאג — מחזיר משחק גולמי מ-football-data (דורש JWT) |
+
+**עמידות `fetch-results` (v10–v11, נלמד ממשחק הפתיחה 11/6):**
+- football-data בחינמי מגיש רפליקות לא עקביות — סטטוס מתנדנד בין TIMED ל-FINISHED, ולפעמים FINISHED בלי תוצאה.
+- לכן: לא כותבים FINISHED בלי תוצאה; אסור downgrade ממשחק FINISHED; אסור לדרוס תוצאה קיימת ב-NULL.
+- **ESPN fallback**: משחק שהתחיל לפני ‎1.5+ שעות ועדיין בלי תוצאה מושלם אוטומטית מ-scoreboard הציבורי של ESPN (ללא מפתח), כולל טריגר ניקוד. התאמת קבוצות לפי זמן פתיחה + חפיפת שמות (prefix tokens).
 
 ### Cron Jobs
 
