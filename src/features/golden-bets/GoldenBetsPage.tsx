@@ -31,18 +31,14 @@ export default function GoldenBetsPage() {
   const locked = !open  // After 11/6 18:00 UTC, all bets become visible to everyone
 
   useEffect(() => {
-    // After lock, RLS allows fetching everyone's golden bets — fetch joined
-    // with the picker's profile + chosen team/player so we can show a reveal.
-    const allBetsQuery = locked
-      ? supabase
-          .from('golden_bets')
-          .select(`
-            *,
-            profiles!user_id (id, username, nickname, avatar, is_bot, total_points),
-            winner_team:teams!winner_team_id (id, name, name_he, crest_url),
-            top_scorer:players!top_scorer_id (id, name, name_he, teams (name, name_he, crest_url))
-          `)
-      : null
+    const allBetsQuery = supabase
+      .from('golden_bets')
+      .select(`
+        *,
+        profiles!user_id (id, username, nickname, avatar, is_bot, total_points),
+        winner_team:teams!winner_team_id (id, name, name_he, crest_url),
+        top_scorer:players!top_scorer_id (id, name, name_he, teams (name, name_he, crest_url))
+      `)
 
     Promise.all([
       // Order by bookmaker-consensus favorite rank (NULL ranks sort last, alpha as tiebreak)
@@ -125,21 +121,15 @@ export default function GoldenBetsPage() {
       </Hero>
 
       {!open ? (
-        <>
-          {/* Locked-state summary card */}
-          <div className="glass-card border border-amber-500/30 rounded-2xl p-8 text-center animate-fade-in-up">
-            <div className="text-5xl mb-3">🔒</div>
-            <p className="font-bold text-amber-300 text-lg">{he.goldenBetsClosed}</p>
-            {existing && (
-              <div className="mt-4 pt-4 border-t border-white/10 text-sm text-gray-300">
-                <p>נקודות שהרווחת: <strong className="text-amber-300 text-lg">{existing.points_earned}</strong></p>
-              </div>
-            )}
-          </div>
-
-          {/* Reveal: everyone's golden bets */}
-          <AllGoldenBetsReveal bets={allBets} myUserId={user?.id} />
-        </>
+        <div className="glass-card border border-amber-500/30 rounded-2xl p-8 text-center animate-fade-in-up">
+          <div className="text-5xl mb-3">🔒</div>
+          <p className="font-bold text-amber-300 text-lg">{he.goldenBetsClosed}</p>
+          {existing && (
+            <div className="mt-4 pt-4 border-t border-white/10 text-sm text-gray-300">
+              <p>נקודות שהרווחת: <strong className="text-amber-300 text-lg">{existing.points_earned}</strong></p>
+            </div>
+          )}
+        </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
           <div className="glass-card rounded-2xl p-5 space-y-5">
@@ -211,6 +201,9 @@ export default function GoldenBetsPage() {
           </p>
         </form>
       )}
+
+      {/* Always show everyone's bets */}
+      <AllGoldenBetsReveal bets={allBets} myUserId={user?.id} />
     </div>
   )
 }
