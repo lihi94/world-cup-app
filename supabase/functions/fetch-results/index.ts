@@ -88,6 +88,17 @@ Deno.serve(async () => {
     const mappedStatus = STATUS_MAP[m.status] ?? 'SCHEDULED'
     const mappedStage = STAGE_MAP[m.stage] ?? 'GROUP'
 
+    // Free-tier API lag: status can flip to FINISHED while fullTime is still
+    // null (happened on the 2026 opener). Writing that would mark the match
+    // FINISHED with no score — scoring 400s and a manually-entered score would
+    // be wiped on the next tick. Skip until the API publishes the real score.
+    if (
+      mappedStatus === 'FINISHED' &&
+      (m.score?.fullTime?.home == null || m.score?.fullTime?.away == null)
+    ) {
+      continue
+    }
+
     // Resolve advancing team: football-data.org sets score.winner to HOME/AWAY/DRAW
     let winnerId: string | null = null
     if (m.score?.winner === 'HOME_TEAM' && m.homeTeam?.id) {
@@ -116,11 +127,21 @@ Deno.serve(async () => {
     // Check current status to detect transition → FINISHED
     const { data: existing } = await supabase
       .from('matches')
-      .select('status, external_id')
+      .select('status, external_id, score_a, score_b')
       .eq('external_id', m.id)
       .maybeSingle()
 
     if (!existing) continue  // match not yet in DB (will be inserted by admin/bootstrap)
+
+    // The free-tier API serves inconsistent replicas that flap between
+    // TIMED and FINISHED for the same match. Never downgrade a finished
+    // match, and never wipe a stored score with null.
+    if (existing.status === 'FINISHED' && mappedStatus !== 'FINISHED') continue
+    if (existing.score_a !== null && payload.score_a === null) {
+      delete payload.score_a
+      delete payload.score_b
+      delete payload.winner_id
+    }
 
     await supabase
       .from('matches')
