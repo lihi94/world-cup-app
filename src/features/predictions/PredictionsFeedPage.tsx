@@ -54,6 +54,11 @@ export default function PredictionsFeedPage() {
 
   useEffect(() => {
     load()
+    // Live tab: poll every 60s so the score (updated by cron every ~5 min)
+    // and newly-revealed predictions appear without a manual refresh.
+    if (tab !== 'live') return
+    const t = setInterval(load, 60_000)
+    return () => clearInterval(t)
   }, [tab])
 
   async function load() {

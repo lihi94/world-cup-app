@@ -134,9 +134,11 @@ Deno.serve(async () => {
     if (!existing) continue  // match not yet in DB (will be inserted by admin/bootstrap)
 
     // The free-tier API serves inconsistent replicas that flap between
-    // TIMED and FINISHED for the same match. Never downgrade a finished
-    // match, and never wipe a stored score with null.
+    // TIMED and FINISHED for the same match. Never downgrade: FINISHED is
+    // terminal, and a match that kicked off can't go back to SCHEDULED.
+    // Never wipe a stored score with null either.
     if (existing.status === 'FINISHED' && mappedStatus !== 'FINISHED') continue
+    if (existing.status === 'IN_PLAY' && mappedStatus === 'SCHEDULED') continue
     if (existing.score_a !== null && payload.score_a === null) {
       delete payload.score_a
       delete payload.score_b
@@ -153,30 +155,49 @@ Deno.serve(async () => {
     }
   }
 
-  // ── ESPN fallback ─────────────────────────────────────────────────────────
+  // ── ESPN live scores + finish fallback ────────────────────────────────────
   // football-data's free tier serves stale, flapping replicas — the 2026
   // opener sat on "FINISHED, fullTime: null" for hours while other replicas
   // said TIMED with data from two days earlier. ESPN's public scoreboard
-  // needs no API key and updates live, so any match that kicked off ≥90
-  // minutes ago and still has no score gets completed from ESPN instead.
+  // needs no API key and updates live, so for every match that kicked off
+  // and isn't finished yet:
+  //   • state 'in'   → mark IN_PLAY + write the current live score
+  //   • state 'post' → mark FINISHED + final score + winner, trigger scoring
+  // Group stage has no extra time, so ESPN's final == the 90-minute score.
   const nowMs = Date.now()
   const { data: pending } = await supabase
     .from('matches')
-    .select('id, external_id, start_time, team_a_id, team_b_id, team_a:teams!team_a_id(name), team_b:teams!team_b_id(name)')
-    .lt('start_time', new Date(nowMs - 1.5 * 3_600_000).toISOString())
+    .select('id, external_id, status, start_time, team_a_id, team_b_id, team_a:teams!team_a_id(name), team_b:teams!team_b_id(name)')
+    .lte('start_time', new Date(nowMs).toISOString())
     .gt('start_time', new Date(nowMs - 48 * 3_600_000).toISOString())
-    .is('score_a', null)
+    .neq('status', 'FINISHED')
     .not('external_id', 'is', null)
 
   let espnFixed = 0
+  let espnLive = 0
   if (pending && pending.length > 0) {
-    // One scoreboard call per distinct UTC date among the pending matches
-    const dates = [...new Set(pending.map(p => p.start_time.slice(0, 10).replace(/-/g, '')))]
+    // ESPN buckets scoreboard days by US local date, so a 02:00 UTC match
+    // lives under the PREVIOUS day's date — query each UTC date and the day
+    // before it, dedupe events by id.
+    const dates = new Set<string>()
+    for (const p of pending) {
+      const t = new Date(p.start_time).getTime()
+      for (const d of [t, t - 86_400_000]) {
+        dates.add(new Date(d).toISOString().slice(0, 10).replace(/-/g, ''))
+      }
+    }
     const events: any[] = []
+    const seenEvents = new Set<string>()
     for (const d of dates) {
       try {
         const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=${d}`)
-        if (r.ok) events.push(...((await r.json()).events ?? []))
+        if (!r.ok) continue
+        for (const e of (await r.json()).events ?? []) {
+          if (!seenEvents.has(e.id)) {
+            seenEvents.add(e.id)
+            events.push(e)
+          }
+        }
       } catch (_) { /* ESPN down — primary source will retry next tick */ }
     }
 
@@ -193,7 +214,6 @@ Deno.serve(async () => {
     for (const p of pending) {
       const kickoff = new Date(p.start_time).getTime()
       const candidates = events.filter(e =>
-        e.status?.type?.completed &&
         Math.abs(new Date(e.date).getTime() - kickoff) < 30 * 60_000
       )
 
@@ -213,15 +233,23 @@ Deno.serve(async () => {
         if (isNaN(hs) || isNaN(as_)) continue
         const scoreA = aligned ? hs : as_
         const scoreB = aligned ? as_ : hs
-        const winnerId = scoreA > scoreB ? p.team_a_id : scoreB > scoreA ? p.team_b_id : null
+        const state = ev.status?.type?.state  // 'pre' | 'in' | 'post'
 
-        await supabase
-          .from('matches')
-          .update({ status: 'FINISHED', score_a: scoreA, score_b: scoreB, winner_id: winnerId })
-          .eq('id', p.id)
-
-        newlyFinished.push(p.external_id as number)
-        espnFixed++
+        if (state === 'post' && ev.status?.type?.completed) {
+          const winnerId = scoreA > scoreB ? p.team_a_id : scoreB > scoreA ? p.team_b_id : null
+          await supabase
+            .from('matches')
+            .update({ status: 'FINISHED', score_a: scoreA, score_b: scoreB, winner_id: winnerId })
+            .eq('id', p.id)
+          newlyFinished.push(p.external_id as number)
+          espnFixed++
+        } else if (state === 'in') {
+          await supabase
+            .from('matches')
+            .update({ status: 'IN_PLAY', score_a: scoreA, score_b: scoreB })
+            .eq('id', p.id)
+          espnLive++
+        }
         break
       }
     }
@@ -291,7 +319,7 @@ Deno.serve(async () => {
   }
 
   return new Response(
-    JSON.stringify({ updated: matches.length, scored: newlyFinished.length, espnFixed, oddsRefreshed }),
+    JSON.stringify({ updated: matches.length, scored: newlyFinished.length, espnFixed, espnLive, oddsRefreshed }),
     { headers: { 'Content-Type': 'application/json' } }
   )
 })
