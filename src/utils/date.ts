@@ -59,7 +59,7 @@ export function formatTime(startTime: string): string {
   })
 }
 
-export const GOLDEN_BET_DEADLINE = new Date('2026-06-11T18:00:00Z')
+export const GOLDEN_BET_DEADLINE = new Date('2026-06-11T13:05:00Z')
 
 export function isGoldenBetOpen(): boolean {
   return new Date() < GOLDEN_BET_DEADLINE
