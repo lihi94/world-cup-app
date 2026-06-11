@@ -70,6 +70,30 @@ export default function Dashboard() {
     setLoading(false)
   }
 
+  /** Inline save from a MatchCard — upserts and updates the local map so the
+      progress bar and card state refresh without a reload. */
+  async function quickSave(matchId: string, a: number, b: number, qualifierId: string | null) {
+    if (!user) return { error: 'לא מחובר' }
+    const { data, error } = await supabase
+      .from('predictions')
+      .upsert(
+        { user_id: user.id, match_id: matchId, pred_score_a: a, pred_score_b: b, pred_qualifier_id: qualifierId },
+        { onConflict: 'user_id,match_id' }
+      )
+      .select()
+      .single()
+    if (error) {
+      if (error.code === '42501') return { error: 'הניחוש נעול — המשחק עומד להתחיל' }
+      return { error: error.message }
+    }
+    setMyPredictions(prev => {
+      const next = new Map(prev)
+      next.set(matchId, data as Prediction)
+      return next
+    })
+    return { error: null }
+  }
+
   // Split: bettable (has teams) vs locked (knockout TBD)
   const { bettable, locked, dateSections } = useMemo(() => {
     const bet: Match[] = []
@@ -216,7 +240,7 @@ export default function Dashboard() {
                   <span className="text-[10px] text-gray-500 font-medium">· {day.matches.length}</span>
                 </div>
                 {day.matches.map(m => (
-                  <MatchCard key={m.id} match={m} myPrediction={myPredictions.get(m.id)} />
+                  <MatchCard key={m.id} match={m} myPrediction={myPredictions.get(m.id)} onQuickSave={quickSave} />
                 ))}
               </div>
             ))}

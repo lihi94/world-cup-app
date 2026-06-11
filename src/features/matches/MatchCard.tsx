@@ -52,6 +52,8 @@ function MatchCountdown({ startTime }: { startTime: string }) {
 interface MatchCardProps {
   match: Match
   myPrediction?: Prediction | null
+  /** When provided, the card shows an inline quick-predict strip instead of linking to the match page. */
+  onQuickSave?: (matchId: string, a: number, b: number, qualifierId: string | null) => Promise<{ error: string | null }>
 }
 
 const STAGE_LABELS: Record<string, string> = {
@@ -69,7 +71,7 @@ const STAGE_COLORS: Record<string, string> = {
   FINAL: 'bg-red-500/20 text-red-300 border-red-500/30',
 }
 
-export default function MatchCard({ match, myPrediction }: MatchCardProps) {
+export default function MatchCard({ match, myPrediction, onQuickSave }: MatchCardProps) {
   const open = isPredictionOpen(match.start_time)
   const teamA = match.team_a
   const teamB = match.team_b
@@ -78,19 +80,18 @@ export default function MatchCard({ match, myPrediction }: MatchCardProps) {
   const isScheduled = match.status === 'SCHEDULED'
   const hasPrediction = !!myPrediction && myPrediction.pred_score_a !== null && myPrediction.pred_score_b !== null
   const needsPrediction = isScheduled && open && !hasPrediction
+  const quickPredict = isScheduled && open && !!onQuickSave
 
   // Predicted-state styling: subtle emerald tint + ring
   const cardClass = hasPrediction && isScheduled
-    ? 'block rounded-2xl p-4 bg-gradient-to-br from-emerald-500/12 via-emerald-500/[0.06] to-transparent border border-emerald-500/40 shadow-lg shadow-emerald-500/10 hover:border-emerald-400/60 active:scale-[0.98] transition-all'
+    ? 'block rounded-2xl p-4 bg-gradient-to-br from-emerald-500/12 via-emerald-500/[0.06] to-transparent border border-emerald-500/40 shadow-lg shadow-emerald-500/10 hover:border-emerald-400/60 transition-all'
     : needsPrediction
-      ? 'block rounded-2xl p-4 bg-gradient-to-br from-amber-500/10 via-amber-500/[0.04] to-transparent border border-amber-500/40 shadow-lg shadow-amber-500/10 hover:border-amber-400/60 active:scale-[0.98] transition-all'
-      : 'block glass-card rounded-2xl p-4 hover:border-emerald-500/40 hover:shadow-lg hover:shadow-emerald-500/10 active:scale-[0.98] transition-all'
+      ? 'block rounded-2xl p-4 bg-gradient-to-br from-amber-500/10 via-amber-500/[0.04] to-transparent border border-amber-500/40 shadow-lg shadow-amber-500/10 hover:border-amber-400/60 transition-all'
+      : 'block glass-card rounded-2xl p-4 hover:border-emerald-500/40 hover:shadow-lg hover:shadow-emerald-500/10 transition-all'
 
   return (
-    <Link
-      to={`/matches/${match.id}`}
-      className={cardClass}
-    >
+    <div className={cardClass}>
+      <Link to={`/matches/${match.id}`} className="block active:scale-[0.99] transition-transform">
       {/* Top row: stage + time/live */}
       <div className="flex items-center justify-between mb-3">
         <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${STAGE_COLORS[match.stage] ?? 'bg-gray-700/40 text-gray-300 border-gray-600'}`}>
@@ -142,9 +143,13 @@ export default function MatchCard({ match, myPrediction }: MatchCardProps) {
         />
       )}
 
-      {/* Bottom: prediction status */}
+      </Link>
+
+      {/* Bottom: inline quick-predict / prediction status */}
       <div className="mt-3 pt-3 border-t border-white/5">
-        {myPrediction ? (
+        {quickPredict ? (
+          <QuickPredict match={match} existing={hasPrediction ? myPrediction! : null} onSave={onQuickSave!} />
+        ) : myPrediction ? (
           <div className="flex items-center justify-between">
             <span className="text-[10px] text-emerald-400 uppercase tracking-wider font-black flex items-center gap-1">
               <span className="text-sm">✓</span> ניחשת
@@ -194,7 +199,167 @@ export default function MatchCard({ match, myPrediction }: MatchCardProps) {
           </span>
         </p>
       )}
-    </Link>
+    </div>
+  )
+}
+
+/**
+ * Inline one-tap prediction editor shown on the dashboard card.
+ * Saved state collapses to a compact "ניחשת" row with an edit button.
+ * Knockout: qualifier is implied by the score; only a draw asks "מי עולה?".
+ */
+function QuickPredict({
+  match, existing, onSave,
+}: {
+  match: Match
+  existing: Prediction | null
+  onSave: (matchId: string, a: number, b: number, qualifierId: string | null) => Promise<{ error: string | null }>
+}) {
+  const [editing, setEditing] = useState(false)
+  const [a, setA] = useState(existing?.pred_score_a ?? 0)
+  const [b, setB] = useState(existing?.pred_score_b ?? 0)
+  const [qual, setQual] = useState<string>(existing?.pred_qualifier_id ?? '')
+  const [saving, setSaving] = useState(false)
+  const [justSaved, setJustSaved] = useState(false)
+  const [err, setErr] = useState('')
+
+  const knockout = match.stage !== 'GROUP' && match.stage !== 'FRIENDLY'
+  const needsQualChoice = knockout && a === b
+
+  if (existing && !editing) {
+    return (
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] text-emerald-400 uppercase tracking-wider font-black flex items-center gap-1">
+          <span className="text-sm">✓</span> {justSaved ? 'נשמר!' : 'ניחשת'}
+        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-black text-emerald-200 bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 rounded-lg tabular-nums">
+            {existing.pred_score_a} – {existing.pred_score_b}
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              setA(existing.pred_score_a ?? 0)
+              setB(existing.pred_score_b ?? 0)
+              setQual(existing.pred_qualifier_id ?? '')
+              setErr('')
+              setEditing(true)
+            }}
+            className="text-xs font-bold text-gray-300 bg-white/5 hover:bg-white/10 border border-white/10 px-2.5 py-1 rounded-full transition active:scale-95"
+          >
+            ✏️ ערוך
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  async function save() {
+    let qualifierId: string | null = null
+    if (knockout) {
+      if (a > b) qualifierId = match.team_a_id
+      else if (b > a) qualifierId = match.team_b_id
+      else qualifierId = qual || null
+      if (!qualifierId) {
+        setErr('תיקו — בחר מי עולה')
+        return
+      }
+    }
+    setSaving(true)
+    setErr('')
+    const { error } = await onSave(match.id, a, b, qualifierId)
+    setSaving(false)
+    if (error) {
+      setErr(error)
+    } else {
+      setEditing(false)
+      setJustSaved(true)
+      setTimeout(() => setJustSaved(false), 2000)
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-center gap-3">
+        <MiniStepper value={a} onChange={setA} />
+        <span className="text-gray-500 font-black text-lg">–</span>
+        <MiniStepper value={b} onChange={setB} />
+      </div>
+
+      {needsQualChoice && (
+        <div className="flex items-center justify-center gap-2">
+          <span className="text-[10px] text-gray-400 font-bold">מי עולה?</span>
+          {[
+            { id: match.team_a_id, name: match.team_a?.name_he ?? match.team_a?.name ?? '?' },
+            { id: match.team_b_id, name: match.team_b?.name_he ?? match.team_b?.name ?? '?' },
+          ].map(t => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setQual(t.id!)}
+              className={`text-xs font-bold px-2.5 py-1 rounded-full border transition active:scale-95 ${
+                qual === t.id
+                  ? 'bg-emerald-500/25 border-emerald-500/50 text-emerald-200'
+                  : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
+              }`}
+            >
+              <bdi>{t.name}</bdi>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {err && (
+        <p className="bg-red-500/15 border border-red-500/30 text-red-300 rounded-lg px-3 py-1.5 text-xs text-center font-medium">{err}</p>
+      )}
+
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={save}
+          disabled={saving}
+          className="flex-1 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white text-sm font-black py-2 rounded-xl transition-all disabled:opacity-50 shadow shadow-emerald-500/20 active:scale-[0.98]"
+        >
+          {saving ? '...' : existing ? 'עדכן ניחוש' : 'שמור ניחוש ⚡'}
+        </button>
+        {existing && (
+          <button
+            type="button"
+            onClick={() => setEditing(false)}
+            className="text-xs font-bold text-gray-400 bg-white/5 hover:bg-white/10 border border-white/10 px-3 rounded-xl transition active:scale-95"
+          >
+            ביטול
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function MiniStepper({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <button
+        type="button"
+        onClick={() => onChange(Math.min(20, value + 1))}
+        className="w-9 h-9 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/40 border border-emerald-500/40 text-emerald-300 font-black text-base flex items-center justify-center transition active:scale-90"
+        aria-label="הוסף שער"
+      >
+        +
+      </button>
+      <span className="w-10 h-11 flex items-center justify-center text-2xl font-black text-white bg-slate-800/80 border border-white/15 rounded-xl tabular-nums">
+        {value}
+      </span>
+      <button
+        type="button"
+        onClick={() => onChange(Math.max(0, value - 1))}
+        disabled={value === 0}
+        className="w-9 h-9 rounded-lg bg-slate-700/40 hover:bg-slate-700/70 border border-white/10 text-gray-300 font-black text-base flex items-center justify-center transition active:scale-90 disabled:opacity-30"
+        aria-label="הורד שער"
+      >
+        −
+      </button>
+    </div>
   )
 }
 
