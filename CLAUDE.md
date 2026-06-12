@@ -41,15 +41,18 @@ npm run test       # טסטים (vitest)
 
 | Function | Version | תפקיד |
 |----------|---------|--------|
-| `fetch-results` | v11 | מעדכן תוצאות כל **5 דקות** (pg_cron job id=2) |
+| `fetch-results` | v14 | מעדכן תוצאות כל **5 דקות** (pg_cron job id=2) |
 | `fetch-odds` | v6 | מושך יחסי הימורים מ-The Odds API |
 | `score-predictions` | v6 | מחשב נקודות לאחר סיום משחק (idempotent — קובע points_earned, לא incremental) |
 | `debug-match` | v2 | כלי דיבאג — מחזיר משחק גולמי מ-football-data (דורש JWT) |
 
-**עמידות `fetch-results` (v10–v11, נלמד ממשחק הפתיחה 11/6):**
+**עמידות `fetch-results` (v14, נלמד ממשחקי הפתיחה 11–12/6):**
 - football-data בחינמי מגיש רפליקות לא עקביות — סטטוס מתנדנד בין TIMED ל-FINISHED, ולפעמים FINISHED בלי תוצאה.
 - לכן: לא כותבים FINISHED בלי תוצאה; אסור downgrade ממשחק FINISHED; אסור לדרוס תוצאה קיימת ב-NULL.
-- **ESPN fallback**: משחק שהתחיל לפני ‎1.5+ שעות ועדיין בלי תוצאה מושלם אוטומטית מ-scoreboard הציבורי של ESPN (ללא מפתח), כולל טריגר ניקוד. התאמת קבוצות לפי זמן פתיחה + חפיפת שמות (prefix tokens).
+- **ESPN רץ ראשון** (לפני football-data) — מסמן IN_PLAY ברגע שהמשחק מתחיל לפי ESPN, לפני שfootball-data מספיק לסמן FINISHED באותו tick. football-data רץ שני ומעדכן stage/teams/future, ולא יכול להוריד סטטוס ממה שESPN כבר כתב.
+- **הבטחת LIVE לפי שעון (v14)**: משחק SCHEDULED ששעת הפתיחה שלו עברה עולה ל-IN_PLAY גם בלי ESPN (קוריאה–צ'כיה 12/6 לא הופיע בלייב כי ESPN לא נבדק/נכשל בשקט). ESPN רק מעשיר תוצאה חיה. לא מקדמים אם ESPN אומר במפורש 'pre' (דחייה), ותקרת קידום kickoff+2:45 כדי שמשחק תקוע לא יישאר לייב לנצח.
+- deduplication עם Set — מונע double-scoring אם שני המקורות מזהים אותו משחק כ-FINISHED.
+- כל tick כותב console.log פר משחק תלוי-ועומד (dbStatus, espnState, candidates) — דיבאג דרך לוגים של הפונקציה.
 
 ### Cron Jobs
 

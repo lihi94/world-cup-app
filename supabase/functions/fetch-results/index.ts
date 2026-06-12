@@ -13,6 +13,20 @@
 //   • fetch-odds trigger uses staleness windows (20h/2h), not frequency,
 //     so total odds-API calls remain ~2 per match regardless of cron rate
 //   • football-data.org free tier (10 req/min) leaves 50× headroom at 5min
+//
+// Execution order (v13+):
+//   1. ESPN runs FIRST — marks IN_PLAY or FINISHED for any kicked-off match
+//   2. football-data runs SECOND — updates stages/teams for future matches,
+//      catches anything ESPN missed, never downgrades status
+// This ordering ensures ESPN can mark a match IN_PLAY before football-data
+// potentially marks it FINISHED in the same tick (free-tier lag issue).
+//
+// Clock-based LIVE guarantee (v14, learned from Korea–Czechia 12/6 which
+// never showed in the LIVE tab): a SCHEDULED match whose kickoff passed is
+// promoted to IN_PLAY by TIME alone, even when ESPN is unreachable or
+// unmatched. ESPN only enriches the live score after that. Promotion is
+// skipped when ESPN explicitly reports 'pre' (delayed kickoff) and is
+// bounded to kickoff+2h45m so a stuck match can't stay falsely live.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -50,120 +64,23 @@ Deno.serve(async () => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   )
 
-  // Single API call — fetch all WC matches at once to respect rate limits
-  const apiKey = Deno.env.get('FOOTBALL_API_KEY')
-  if (!apiKey) {
-    return new Response('FOOTBALL_API_KEY secret not set', { status: 500 })
-  }
-
-  const url = `${FOOTBALL_API}/competitions/${COMPETITION}/matches?season=2026`
-  const res = await fetch(url, { headers: { 'X-Auth-Token': apiKey } })
-
-  if (!res.ok) {
-    const body = await res.text()
-    console.error(`Football API error ${res.status} on ${url}`, body)
-    return new Response(
-      JSON.stringify({
-        error: 'football_api_error',
-        status: res.status,
-        url,
-        keyLength: apiKey.length,
-        body: body.slice(0, 500),
-      }),
-      { status: 502, headers: { 'Content-Type': 'application/json' } }
-    )
-  }
-
-  const { matches } = await res.json()
-
-  // Load all teams so we can resolve external_id → uuid
+  // Load all teams so we can resolve external_id → uuid (needed by football-data block)
   const { data: teamsData } = await supabase.from('teams').select('id, external_id')
   const teamMap = new Map<number, string>(
     (teamsData ?? []).map((t: { id: string; external_id: number }) => [t.external_id, t.id])
   )
 
-  const newlyFinished: number[] = []
+  // newlyFinished collects external_ids from both ESPN and football-data blocks.
+  // Using a Set to avoid double-scoring the same match.
+  const newlyFinishedSet = new Set<number>()
 
-  for (const m of matches) {
-    const mappedStatus = STATUS_MAP[m.status] ?? 'SCHEDULED'
-    const mappedStage = STAGE_MAP[m.stage] ?? 'GROUP'
-
-    // Free-tier API lag: status can flip to FINISHED while fullTime is still
-    // null (happened on the 2026 opener). Writing that would mark the match
-    // FINISHED with no score — scoring 400s and a manually-entered score would
-    // be wiped on the next tick. Skip until the API publishes the real score.
-    if (
-      mappedStatus === 'FINISHED' &&
-      (m.score?.fullTime?.home == null || m.score?.fullTime?.away == null)
-    ) {
-      continue
-    }
-
-    // Resolve advancing team: football-data.org sets score.winner to HOME/AWAY/DRAW
-    let winnerId: string | null = null
-    if (m.score?.winner === 'HOME_TEAM' && m.homeTeam?.id) {
-      winnerId = teamMap.get(m.homeTeam.id) ?? null
-    } else if (m.score?.winner === 'AWAY_TEAM' && m.awayTeam?.id) {
-      winnerId = teamMap.get(m.awayTeam.id) ?? null
-    }
-
-    // Resolve team UUIDs from the API home/away team IDs
-    const teamAId = m.homeTeam?.id ? (teamMap.get(m.homeTeam.id) ?? null) : null
-    const teamBId = m.awayTeam?.id ? (teamMap.get(m.awayTeam.id) ?? null) : null
-
-    const payload: Record<string, unknown> = {
-      external_id: m.id,
-      status: mappedStatus,
-      stage: mappedStage,
-      score_a: m.score?.fullTime?.home ?? null,  // 90-min only
-      score_b: m.score?.fullTime?.away ?? null,
-      winner_id: winnerId,
-    }
-
-    // Fill in team IDs for knockout matches once teams are determined
-    if (teamAId) payload.team_a_id = teamAId
-    if (teamBId) payload.team_b_id = teamBId
-
-    // Check current status to detect transition → FINISHED
-    const { data: existing } = await supabase
-      .from('matches')
-      .select('status, external_id, score_a, score_b')
-      .eq('external_id', m.id)
-      .maybeSingle()
-
-    if (!existing) continue  // match not yet in DB (will be inserted by admin/bootstrap)
-
-    // The free-tier API serves inconsistent replicas that flap between
-    // TIMED and FINISHED for the same match. Never downgrade: FINISHED is
-    // terminal, and a match that kicked off can't go back to SCHEDULED.
-    // Never wipe a stored score with null either.
-    if (existing.status === 'FINISHED' && mappedStatus !== 'FINISHED') continue
-    if (existing.status === 'IN_PLAY' && mappedStatus === 'SCHEDULED') continue
-    if (existing.score_a !== null && payload.score_a === null) {
-      delete payload.score_a
-      delete payload.score_b
-      delete payload.winner_id
-    }
-
-    await supabase
-      .from('matches')
-      .update(payload)
-      .eq('external_id', m.id)
-
-    if (existing.status !== 'FINISHED' && mappedStatus === 'FINISHED') {
-      newlyFinished.push(m.id)
-    }
-  }
-
-  // ── ESPN live scores + finish fallback ────────────────────────────────────
-  // football-data's free tier serves stale, flapping replicas — the 2026
-  // opener sat on "FINISHED, fullTime: null" for hours while other replicas
-  // said TIMED with data from two days earlier. ESPN's public scoreboard
-  // needs no API key and updates live, so for every match that kicked off
-  // and isn't finished yet:
-  //   • state 'in'   → mark IN_PLAY + write the current live score
+  // ── 1. ESPN live scores (runs FIRST) ─────────────────────────────────────
+  // ESPN runs before football-data so it can mark IN_PLAY before football-data
+  // potentially marks the same match FINISHED in the same tick (free-tier lag).
+  //
+  // For every match that kicked off (within the last 48h) and isn't FINISHED:
+  //   • state 'in'   → mark IN_PLAY + write current live score
   //   • state 'post' → mark FINISHED + final score + winner, trigger scoring
-  // Group stage has no extra time, so ESPN's final == the 90-minute score.
   const nowMs = Date.now()
   const { data: pending } = await supabase
     .from('matches')
@@ -175,6 +92,7 @@ Deno.serve(async () => {
 
   let espnFixed = 0
   let espnLive = 0
+  let timePromoted = 0
   if (pending && pending.length > 0) {
     // ESPN buckets scoreboard days by US local date, so a 02:00 UTC match
     // lives under the PREVIOUS day's date — query each UTC date and the day
@@ -198,7 +116,7 @@ Deno.serve(async () => {
             events.push(e)
           }
         }
-      } catch (_) { /* ESPN down — primary source will retry next tick */ }
+      } catch (_) { /* ESPN down — football-data will cover next tick */ }
     }
 
     // Loose name matching: shared token prefix handles naming gaps like
@@ -217,6 +135,11 @@ Deno.serve(async () => {
         Math.abs(new Date(e.date).getTime() - kickoff) < 30 * 60_000
       )
 
+      // What ESPN said about this match this tick — null means no event matched
+      // (ESPN down, name mismatch, missing date bucket). Drives both the score
+      // update and the clock-based promotion fallback below.
+      let espnState: string | null = null
+
       for (const ev of candidates) {
         const comp = ev.competitions?.[0]
         const home = comp?.competitors?.find((c: any) => c.homeAway === 'home')
@@ -233,17 +156,17 @@ Deno.serve(async () => {
         if (isNaN(hs) || isNaN(as_)) continue
         const scoreA = aligned ? hs : as_
         const scoreB = aligned ? as_ : hs
-        const state = ev.status?.type?.state  // 'pre' | 'in' | 'post'
+        espnState = ev.status?.type?.state ?? null  // 'pre' | 'in' | 'post'
 
-        if (state === 'post' && ev.status?.type?.completed) {
+        if (espnState === 'post' && ev.status?.type?.completed) {
           const winnerId = scoreA > scoreB ? p.team_a_id : scoreB > scoreA ? p.team_b_id : null
           await supabase
             .from('matches')
             .update({ status: 'FINISHED', score_a: scoreA, score_b: scoreB, winner_id: winnerId })
             .eq('id', p.id)
-          newlyFinished.push(p.external_id as number)
+          newlyFinishedSet.add(p.external_id as number)
           espnFixed++
-        } else if (state === 'in') {
+        } else if (espnState === 'in') {
           await supabase
             .from('matches')
             .update({ status: 'IN_PLAY', score_a: scoreA, score_b: scoreB })
@@ -252,10 +175,121 @@ Deno.serve(async () => {
         }
         break
       }
+
+      // Clock-based LIVE guarantee: kickoff passed and ESPN gave us nothing →
+      // promote to IN_PLAY anyway so the match always appears in the LIVE tab
+      // (score stays null → UI renders 0–0 until ESPN catches up). Skipped when
+      // ESPN explicitly says 'pre' (delayed kickoff). Bounded to 2h45m so a
+      // postponed/stuck match can't sit falsely live forever.
+      const elapsed = nowMs - kickoff
+      if (
+        espnState === null &&
+        p.status === 'SCHEDULED' &&
+        elapsed >= 0 && elapsed < 2.75 * 3_600_000
+      ) {
+        await supabase
+          .from('matches')
+          .update({ status: 'IN_PLAY' })
+          .eq('id', p.id)
+        timePromoted++
+      }
+
+      console.log(JSON.stringify({
+        match: `${(p as any).team_a?.name} vs ${(p as any).team_b?.name}`,
+        dbStatus: p.status,
+        espnCandidates: candidates.length,
+        espnState,
+        elapsedMin: Math.round(elapsed / 60_000),
+      }))
     }
   }
 
-  // Trigger scoring for each newly finished match
+  // ── 2. football-data (runs SECOND) ───────────────────────────────────────
+  // Updates stages, future match metadata, and team IDs. Also catches matches
+  // that ESPN missed. The anti-downgrade guards below ensure football-data
+  // can't undo what ESPN just wrote (e.g. IN_PLAY → SCHEDULED).
+  const apiKey = Deno.env.get('FOOTBALL_API_KEY')
+  if (!apiKey) {
+    return new Response('FOOTBALL_API_KEY secret not set', { status: 500 })
+  }
+
+  const url = `${FOOTBALL_API}/competitions/${COMPETITION}/matches?season=2026`
+  const res = await fetch(url, { headers: { 'X-Auth-Token': apiKey } })
+
+  let fdUpdated = 0
+  if (res.ok) {
+    const { matches } = await res.json()
+    fdUpdated = matches.length
+
+    for (const m of matches) {
+      const mappedStatus = STATUS_MAP[m.status] ?? 'SCHEDULED'
+      const mappedStage = STAGE_MAP[m.stage] ?? 'GROUP'
+
+      // Free-tier API lag: status can flip to FINISHED while fullTime is still
+      // null (happened on the 2026 opener). Skip until scores are published.
+      if (
+        mappedStatus === 'FINISHED' &&
+        (m.score?.fullTime?.home == null || m.score?.fullTime?.away == null)
+      ) {
+        continue
+      }
+
+      // Resolve advancing team: football-data.org sets score.winner to HOME/AWAY/DRAW
+      let winnerId: string | null = null
+      if (m.score?.winner === 'HOME_TEAM' && m.homeTeam?.id) {
+        winnerId = teamMap.get(m.homeTeam.id) ?? null
+      } else if (m.score?.winner === 'AWAY_TEAM' && m.awayTeam?.id) {
+        winnerId = teamMap.get(m.awayTeam.id) ?? null
+      }
+
+      const teamAId = m.homeTeam?.id ? (teamMap.get(m.homeTeam.id) ?? null) : null
+      const teamBId = m.awayTeam?.id ? (teamMap.get(m.awayTeam.id) ?? null) : null
+
+      const payload: Record<string, unknown> = {
+        external_id: m.id,
+        status: mappedStatus,
+        stage: mappedStage,
+        score_a: m.score?.fullTime?.home ?? null,
+        score_b: m.score?.fullTime?.away ?? null,
+        winner_id: winnerId,
+      }
+
+      if (teamAId) payload.team_a_id = teamAId
+      if (teamBId) payload.team_b_id = teamBId
+
+      const { data: existing } = await supabase
+        .from('matches')
+        .select('status, external_id, score_a, score_b')
+        .eq('external_id', m.id)
+        .maybeSingle()
+
+      if (!existing) continue
+
+      // Anti-downgrade guards — the free-tier serves inconsistent replicas.
+      // ESPN already ran this tick; don't let football-data undo it.
+      if (existing.status === 'FINISHED' && mappedStatus !== 'FINISHED') continue
+      if (existing.status === 'IN_PLAY' && mappedStatus === 'SCHEDULED') continue
+      if (existing.score_a !== null && payload.score_a === null) {
+        delete payload.score_a
+        delete payload.score_b
+        delete payload.winner_id
+      }
+
+      await supabase
+        .from('matches')
+        .update(payload)
+        .eq('external_id', m.id)
+
+      if (existing.status !== 'FINISHED' && mappedStatus === 'FINISHED') {
+        newlyFinishedSet.add(m.id)
+      }
+    }
+  } else {
+    console.error(`Football API error ${res.status}`)
+  }
+
+  // ── 3. Trigger scoring for newly finished matches ────────────────────────
+  const newlyFinished = Array.from(newlyFinishedSet)
   for (const externalId of newlyFinished) {
     await fetch(
       `${Deno.env.get('SUPABASE_URL')}/functions/v1/score-predictions`,
@@ -270,15 +304,10 @@ Deno.serve(async () => {
     )
   }
 
-  // ── Pre-match odds refresh ────────────────────────────────────────────────
+  // ── 4. Pre-match odds refresh ─────────────────────────────────────────────
   // Refresh odds exactly twice per match:
   //   • ~24 h before kickoff  (window: 22 h – 26 h from now, stale if >20 h old)
   //   • ~3 h before kickoff   (window:  2 h –  4 h from now, stale if > 2 h old)
-  // fetch-results runs every 5 min — many cron ticks land inside each window,
-  // but only the FIRST one actually triggers fetch-odds because subsequent
-  // ticks see odds_updated_at within the staleness threshold and skip.
-  // Net result: ~2 fetch-odds calls per match across the whole tournament,
-  // identical to the previous 15-min cadence.
   const now = Date.now()
 
   const [w24, w3] = await Promise.all([
@@ -319,7 +348,7 @@ Deno.serve(async () => {
   }
 
   return new Response(
-    JSON.stringify({ updated: matches.length, scored: newlyFinished.length, espnFixed, espnLive, oddsRefreshed }),
+    JSON.stringify({ fdUpdated, scored: newlyFinished.length, espnFixed, espnLive, timePromoted, oddsRefreshed }),
     { headers: { 'Content-Type': 'application/json' } }
   )
 })
