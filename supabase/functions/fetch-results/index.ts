@@ -27,6 +27,13 @@
 // unmatched. ESPN only enriches the live score after that. Promotion is
 // skipped when ESPN explicitly reports 'pre' (delayed kickoff) and is
 // bounded to kickoff+2h45m so a stuck match can't stay falsely live.
+//
+// Self-healing scoring (v15, learned from Canada–Bosnia 12/6): the tick that
+// marked the match FINISHED crashed (football-data fetch threw, uncaught)
+// before reaching the scoring step, and later ticks never retried because
+// the FINISHED transition only fires once. Now football-data is wrapped in
+// try/catch, and EVERY tick re-scores all matches finished in the last 24h —
+// score-predictions is idempotent, so a crashed tick is repaired within 5min.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -213,10 +220,15 @@ Deno.serve(async () => {
     return new Response('FOOTBALL_API_KEY secret not set', { status: 500 })
   }
 
+  // Wrapped in try/catch: a thrown fetch here used to kill the whole tick —
+  // including the scoring step below — leaving a FINISHED match unscored
+  // forever (Canada–Bosnia 12/6). football-data failing must never block
+  // scoring or odds.
+  let fdUpdated = 0
+  try {
   const url = `${FOOTBALL_API}/competitions/${COMPETITION}/matches?season=2026`
   const res = await fetch(url, { headers: { 'X-Auth-Token': apiKey } })
 
-  let fdUpdated = 0
   if (res.ok) {
     const { matches } = await res.json()
     fdUpdated = matches.length
@@ -287,8 +299,26 @@ Deno.serve(async () => {
   } else {
     console.error(`Football API error ${res.status}`)
   }
+  } catch (e) {
+    console.error(`football-data block failed: ${e}`)
+  }
 
-  // ── 3. Trigger scoring for newly finished matches ────────────────────────
+  // ── 3. Score finished matches (self-healing) ─────────────────────────────
+  // Not just newly-finished: EVERY tick re-scores all matches finished in the
+  // last 24h. score-predictions recalculates from scratch (idempotent), so
+  // this repairs any tick that crashed between marking FINISHED and scoring.
+  const { data: recentFinished } = await supabase
+    .from('matches')
+    .select('external_id')
+    .eq('status', 'FINISHED')
+    .neq('stage', 'FRIENDLY')
+    .not('external_id', 'is', null)
+    .not('score_a', 'is', null)
+    .gt('start_time', new Date(nowMs - 24 * 3_600_000).toISOString())
+  for (const r of recentFinished ?? []) {
+    newlyFinishedSet.add(r.external_id as number)
+  }
+
   const newlyFinished = Array.from(newlyFinishedSet)
   for (const externalId of newlyFinished) {
     await fetch(
