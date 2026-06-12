@@ -34,6 +34,13 @@
 // the FINISHED transition only fires once. Now football-data is wrapped in
 // try/catch, and EVERY tick re-scores all matches finished in the last 24h —
 // score-predictions is idempotent, so a crashed tick is repaired within 5min.
+//
+// Knockout extra time / penalties (v16, fixed BEFORE it bit us): score_a/b
+// must hold the 90-minute score only. ESPN finals include ET goals, so for a
+// knockout match not decided in 90' (detail ≠ FT) ESPN sets FINISHED + winner
+// (its competitor.winner flag covers shootouts) but leaves the score to
+// football-data's regularTime. The leaderboard is also reconciled every tick
+// (reconcile_total_points) so total_points can never silently drift.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -91,7 +98,7 @@ Deno.serve(async () => {
   const nowMs = Date.now()
   const { data: pending } = await supabase
     .from('matches')
-    .select('id, external_id, status, start_time, team_a_id, team_b_id, team_a:teams!team_a_id(name), team_b:teams!team_b_id(name)')
+    .select('id, external_id, status, stage, start_time, team_a_id, team_b_id, team_a:teams!team_a_id(name), team_b:teams!team_b_id(name)')
     .lte('start_time', new Date(nowMs).toISOString())
     .gt('start_time', new Date(nowMs - 48 * 3_600_000).toISOString())
     .neq('status', 'FINISHED')
@@ -166,12 +173,33 @@ Deno.serve(async () => {
         espnState = ev.status?.type?.state ?? null  // 'pre' | 'in' | 'post'
 
         if (espnState === 'post' && ev.status?.type?.completed) {
-          const winnerId = scoreA > scoreB ? p.team_a_id : scoreB > scoreA ? p.team_b_id : null
+          // Advancing team: ESPN's competitor.winner flag is authoritative —
+          // it covers extra time AND penalty shootouts. Fall back to score
+          // comparison (group-stage draws leave both flags false → null).
+          let winnerId: string | null = null
+          if (home.winner === true) winnerId = aligned ? p.team_a_id : p.team_b_id
+          else if (away.winner === true) winnerId = aligned ? p.team_b_id : p.team_a_id
+          else winnerId = scoreA > scoreB ? p.team_a_id : scoreB > scoreA ? p.team_b_id : null
+
+          // score_a/score_b must hold the 90-minute score only (scoring rule).
+          // ESPN's final includes extra-time goals, so for a knockout match
+          // that went past 90' (detail AET/Pens, not plain FT) we mark it
+          // FINISHED + winner but NULL the score — football-data's
+          // regularTime fills the true 90' score, and the self-healing
+          // scorer picks the match up on the tick after that.
+          const detail = String(ev.status?.type?.shortDetail ?? ev.status?.type?.detail ?? '').toUpperCase()
+          const isKnockout = !['GROUP', 'FRIENDLY'].includes((p as any).stage)
+          const decidedIn90 = !isKnockout || detail === 'FT'
+
           await supabase
             .from('matches')
-            .update({ status: 'FINISHED', score_a: scoreA, score_b: scoreB, winner_id: winnerId })
+            .update(
+              decidedIn90
+                ? { status: 'FINISHED', score_a: scoreA, score_b: scoreB, winner_id: winnerId }
+                : { status: 'FINISHED', score_a: null, score_b: null, winner_id: winnerId }
+            )
             .eq('id', p.id)
-          newlyFinishedSet.add(p.external_id as number)
+          if (decidedIn90) newlyFinishedSet.add(p.external_id as number)
           espnFixed++
         } else if (espnState === 'in') {
           await supabase
@@ -237,11 +265,18 @@ Deno.serve(async () => {
       const mappedStatus = STATUS_MAP[m.status] ?? 'SCHEDULED'
       const mappedStage = STAGE_MAP[m.stage] ?? 'GROUP'
 
+      // score_a/score_b hold the 90-minute score only. When a knockout match
+      // went to extra time / penalties, football-data's fullTime includes ET
+      // goals — regularTime is the true 90' score.
+      const went90Only = (m.score?.duration ?? 'REGULAR') === 'REGULAR'
+      const score90Home = went90Only ? m.score?.fullTime?.home : m.score?.regularTime?.home
+      const score90Away = went90Only ? m.score?.fullTime?.away : m.score?.regularTime?.away
+
       // Free-tier API lag: status can flip to FINISHED while fullTime is still
       // null (happened on the 2026 opener). Skip until scores are published.
       if (
         mappedStatus === 'FINISHED' &&
-        (m.score?.fullTime?.home == null || m.score?.fullTime?.away == null)
+        (score90Home == null || score90Away == null)
       ) {
         continue
       }
@@ -261,8 +296,8 @@ Deno.serve(async () => {
         external_id: m.id,
         status: mappedStatus,
         stage: mappedStage,
-        score_a: m.score?.fullTime?.home ?? null,
-        score_b: m.score?.fullTime?.away ?? null,
+        score_a: score90Home ?? null,  // 90-minute score only
+        score_b: score90Away ?? null,
         winner_id: winnerId,
       }
 
@@ -321,18 +356,31 @@ Deno.serve(async () => {
 
   const newlyFinished = Array.from(newlyFinishedSet)
   for (const externalId of newlyFinished) {
-    await fetch(
-      `${Deno.env.get('SUPABASE_URL')}/functions/v1/score-predictions`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ external_id: externalId }),
-      }
-    )
+    try {
+      await fetch(
+        `${Deno.env.get('SUPABASE_URL')}/functions/v1/score-predictions`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ external_id: externalId }),
+        }
+      )
+    } catch (e) {
+      console.error(`scoring ${externalId} failed (retried next tick): ${e}`)
+    }
   }
+
+  // Leaderboard safety net: force profiles.total_points to equal the true
+  // sum of predictions + golden bets. Any drift from a crashed/partial
+  // scoring run self-heals here within one tick.
+  let pointsFixed = 0
+  const { data: fixedCount, error: reconcileErr } = await supabase.rpc('reconcile_total_points')
+  if (reconcileErr) console.error(`reconcile_total_points failed: ${reconcileErr.message}`)
+  else pointsFixed = fixedCount ?? 0
+  if (pointsFixed > 0) console.log(`reconcile_total_points fixed ${pointsFixed} drifted profiles`)
 
   // ── 4. Pre-match odds refresh ─────────────────────────────────────────────
   // Refresh odds exactly twice per match:
@@ -378,7 +426,7 @@ Deno.serve(async () => {
   }
 
   return new Response(
-    JSON.stringify({ fdUpdated, scored: newlyFinished.length, espnFixed, espnLive, timePromoted, oddsRefreshed }),
+    JSON.stringify({ fdUpdated, scored: newlyFinished.length, espnFixed, espnLive, timePromoted, pointsFixed, oddsRefreshed }),
     { headers: { 'Content-Type': 'application/json' } }
   )
 })

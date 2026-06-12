@@ -41,18 +41,20 @@ npm run test       # טסטים (vitest)
 
 | Function | Version | תפקיד |
 |----------|---------|--------|
-| `fetch-results` | v15 | מעדכן תוצאות כל **5 דקות** (pg_cron job id=2) |
+| `fetch-results` | v16 | מעדכן תוצאות כל **5 דקות** (pg_cron job id=2) |
 | `fetch-odds` | v6 | מושך יחסי הימורים מ-The Odds API |
 | `score-predictions` | v6 | מחשב נקודות לאחר סיום משחק (idempotent — קובע points_earned, לא incremental) |
 | `debug-match` | v2 | כלי דיבאג — מחזיר משחק גולמי מ-football-data (דורש JWT) |
 
-**עמידות `fetch-results` (v15, נלמד ממשחקי הפתיחה 11–12/6):**
+**עמידות `fetch-results` (v16, נלמד ממשחקי הפתיחה 11–12/6):**
 - football-data בחינמי מגיש רפליקות לא עקביות — סטטוס מתנדנד בין TIMED ל-FINISHED, ולפעמים FINISHED בלי תוצאה.
 - לכן: לא כותבים FINISHED בלי תוצאה; אסור downgrade ממשחק FINISHED; אסור לדרוס תוצאה קיימת ב-NULL.
 - **ESPN רץ ראשון** (לפני football-data) — מסמן IN_PLAY ברגע שהמשחק מתחיל לפי ESPN, לפני שfootball-data מספיק לסמן FINISHED באותו tick. football-data רץ שני ומעדכן stage/teams/future, ולא יכול להוריד סטטוס ממה שESPN כבר כתב.
 - **הבטחת LIVE לפי שעון (v14)**: משחק SCHEDULED ששעת הפתיחה שלו עברה עולה ל-IN_PLAY גם בלי ESPN (קוריאה–צ'כיה 12/6 לא הופיע בלייב כי ESPN לא נבדק/נכשל בשקט). ESPN רק מעשיר תוצאה חיה. לא מקדמים אם ESPN אומר במפורש 'pre' (דחייה), ותקרת קידום kickoff+2:45 כדי שמשחק תקוע לא יישאר לייב לנצח.
 - deduplication עם Set — מונע double-scoring אם שני המקורות מזהים אותו משחק כ-FINISHED.
 - **ניקוד מרפא-עצמי (v15)**: בקנדה–בוסניה 12/6 הריצה שסימנה FINISHED קרסה (fetch של football-data זרק שגיאה לא תפוסה) לפני שלב הניקוד, ואף ריצה לא ניסתה שוב כי טריגר המעבר ל-FINISHED נורה פעם אחת. עכשיו: בלוק football-data עטוף try/catch, וכל ריצה מנקדת מחדש את **כל** המשחקים שהסתיימו ב-24 השעות האחרונות (score-predictions אידמפוטנטי) — קריסה מתוקנת לבד תוך 5 דקות.
+- **הארכות ופנדלים בנוקאאוט (v16, תוקן מראש)**: `score_a/b` חייבים להיות תוצאת 90 דקות בלבד. ESPN בנוקאאוט שלא הוכרע ב-90 (detail≠FT) קובע FINISHED + winner_id (דגל competitor.winner של ESPN מכסה גם פנדלים) אבל משאיר את התוצאה ל-regularTime של football-data (שמשתמש בו כש-duration≠REGULAR). הניקוד מחכה שהתוצאה תתמלא ואז רץ אוטומטית.
+- **רשת ביטחון לטבלה (v16, מיגרציה 027)**: כל ריצה קוראת `reconcile_total_points()` — מיישרת את `profiles.total_points` לסכום האמיתי של ניחושים+זהב. נבדק: שיבוש מכוון של נקודות תוקן אוטומטית בריצה אחת.
 - כל tick כותב console.log פר משחק תלוי-ועומד (dbStatus, espnState, candidates) — דיבאג דרך לוגים של הפונקציה.
 
 ### Cron Jobs
