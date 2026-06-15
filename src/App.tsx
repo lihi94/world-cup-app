@@ -7,6 +7,7 @@ import MatchCenter from './features/matches/MatchCenter'
 import LeaderboardPage from './features/leaderboard/LeaderboardPage'
 import GoldenBetsPage from './features/golden-bets/GoldenBetsPage'
 import PredictionsFeedPage from './features/predictions/PredictionsFeedPage'
+import PlayerProfilePage from './features/players/PlayerProfilePage'
 import AdminPage from './features/admin/AdminPage'
 import NavBar from './components/common/NavBar'
 import Spinner from './components/common/Spinner'
@@ -43,6 +44,7 @@ export default function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/matches/:matchId" element={<MatchCenter />} />
           <Route path="/leaderboard" element={<LeaderboardPage />} />
+          <Route path="/players/:userId" element={<PlayerProfilePage />} />
           <Route path="/predictions" element={<PredictionsFeedPage />} />
           <Route path="/golden-bets" element={<GoldenBetsPage />} />
           <Route path="/admin" element={<AdminPage />} />

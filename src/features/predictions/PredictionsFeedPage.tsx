@@ -6,8 +6,8 @@ import Spinner from '../../components/common/Spinner'
 import Hero from '../../components/common/Hero'
 import MatchSection from '../../components/common/MatchSection'
 import { formatKickoff } from '../../utils/date'
-import { he } from '../../i18n/he'
 import { groupMatchesIntoSections } from '../../utils/grouping'
+import { predOutcome, OUTCOME_RANK, OUTCOME_STYLE, STAGE_LABELS } from '../../utils/outcome'
 import { displayName, type Match, type Prediction } from '../../types'
 
 type Tab = 'finished' | 'live' | 'upcoming'
@@ -20,28 +20,6 @@ type PredictionWithProfile = Prediction & {
     is_bot: boolean
     avatar?: string
   }
-}
-
-const STAGE_LABELS: Record<string, string> = {
-  FRIENDLY: he.FRIENDLY, GROUP: he.GROUP, R32: he.R32, R16: he.R16, QF: he.QF, SF: he.SF, THIRD: he.THIRD, FINAL: he.FINAL,
-}
-
-type Outcome = 'exact' | 'direction' | 'miss'
-
-/** Classify a prediction against the final score: exact / right-direction / miss. */
-function predOutcome(pa: number | null, pb: number | null, sa: number | null, sb: number | null): Outcome | null {
-  if (pa == null || pb == null || sa == null || sb == null) return null
-  if (pa === sa && pb === sb) return 'exact'
-  if (Math.sign(pa - pb) === Math.sign(sa - sb)) return 'direction'
-  return 'miss'
-}
-
-const OUTCOME_RANK: Record<Outcome, number> = { exact: 0, direction: 1, miss: 2 }
-
-const OUTCOME_STYLE: Record<Outcome, { badge: string; icon: string; label: string }> = {
-  exact:     { badge: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40', icon: '🎯', label: 'מדויק' },
-  direction: { badge: 'bg-amber-500/15 text-amber-300 border-amber-500/30',       icon: '↗',  label: 'כיוון' },
-  miss:      { badge: 'bg-red-500/15 text-red-300 border-red-500/30',             icon: '✗',  label: 'טעות' },
 }
 
 export default function PredictionsFeedPage() {
@@ -72,7 +50,8 @@ export default function PredictionsFeedPage() {
       .select('*, team_a:teams!team_a_id(id,name,name_he,crest_url,group_name), team_b:teams!team_b_id(id,name,name_he,crest_url,group_name)')
 
     if (tab === 'finished') {
-      q = q.eq('status', 'FINISHED').order('start_time', { ascending: false }).limit(30)
+      // Friendlies don't count for points — hide them from the finished feed.
+      q = q.eq('status', 'FINISHED').neq('stage', 'FRIENDLY').order('start_time', { ascending: false }).limit(30)
     } else if (tab === 'live') {
       q = q.eq('status', 'IN_PLAY').order('start_time', { ascending: true })
     } else {

@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useLeaderboard } from '../../hooks/useLeaderboard'
 import { useAuth } from '../../hooks/useAuth'
 import Spinner from '../../components/common/Spinner'
@@ -110,13 +111,18 @@ export default function LeaderboardPage() {
 
                 {/* Player */}
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className={`text-xl w-9 h-9 rounded-xl flex items-center justify-center shadow shrink-0 ${
-                    isMe
-                      ? 'bg-gradient-to-br from-emerald-400/30 to-emerald-600/30 ring-1 ring-emerald-300/50'
-                      : 'bg-slate-700/60 border border-white/5'
-                  }`}>
+                  {/* Avatar is the tappable entry point to the player's profile */}
+                  <Link
+                    to={`/players/${profile.id}`}
+                    aria-label={`הצג פרופיל של ${displayName(profile)}`}
+                    className={`text-xl w-9 h-9 rounded-xl flex items-center justify-center shadow shrink-0 transition active:scale-95 hover:brightness-110 cursor-pointer ${
+                      isMe
+                        ? 'bg-gradient-to-br from-emerald-400/30 to-emerald-600/30 ring-1 ring-emerald-300/50'
+                        : 'bg-slate-700/60 border border-white/5 hover:ring-1 hover:ring-amber-400/50'
+                    }`}
+                  >
                     {profile.avatar || '⚽'}
-                  </span>
+                  </Link>
                   <div className="min-w-0">
                     <p className={`font-bold text-sm truncate ${isMe ? 'text-emerald-300' : 'text-gray-100'}`}>
                       {displayName(profile)}
