@@ -259,9 +259,9 @@ function HistoryRow({ pred }: { pred: PredictionWithMatch }) {
         </p>
         <p className="text-[10px] text-gray-500 mt-0.5">
           {isFinished
-            ? <>תוצאה <span dir="ltr" className="inline-block text-gray-300 font-bold tabular-nums">{m.score_a}–{m.score_b}</span></>
+            ? <>תוצאה <span className="text-gray-300 font-bold tabular-nums">{m.score_a}–{m.score_b}</span></>
             : m.status === 'IN_PLAY'
-              ? <span className="text-yellow-300 font-bold">🔴 חי <span dir="ltr" className="inline-block">{m.score_a ?? 0}–{m.score_b ?? 0}</span></span>
+              ? <span className="text-yellow-300 font-bold">🔴 חי {m.score_a ?? 0}–{m.score_b ?? 0}</span>
               : formatKickoff(m.start_time)}
         </p>
       </div>
@@ -275,7 +275,7 @@ function HistoryRow({ pred }: { pred: PredictionWithMatch }) {
         </span>
       )}
 
-      <span dir="ltr" className="text-xs font-black px-2 py-0.5 rounded border tabular-nums shrink-0 text-gray-100 bg-white/5 border-white/10">
+      <span className="text-xs font-black px-2 py-0.5 rounded border tabular-nums shrink-0 text-gray-100 bg-white/5 border-white/10">
         {pred.pred_score_a ?? '?'}–{pred.pred_score_b ?? '?'}
       </span>
 

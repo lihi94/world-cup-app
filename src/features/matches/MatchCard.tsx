@@ -155,7 +155,7 @@ export default function MatchCard({ match, myPrediction, onQuickSave }: MatchCar
               <span className="text-sm">✓</span> ניחשת
             </span>
             <div className="flex items-center gap-2">
-              <span dir="ltr" className="text-sm font-black text-emerald-200 bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 rounded-lg tabular-nums">
+              <span className="text-sm font-black text-emerald-200 bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 rounded-lg tabular-nums">
                 {myPrediction.pred_score_a} – {myPrediction.pred_score_b}
               </span>
               {isFinished && (
@@ -233,7 +233,7 @@ function QuickPredict({
           <span className="text-sm">✓</span> {justSaved ? 'נשמר!' : 'ניחשת'}
         </span>
         <div className="flex items-center gap-2">
-          <span dir="ltr" className="text-sm font-black text-emerald-200 bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 rounded-lg tabular-nums">
+          <span className="text-sm font-black text-emerald-200 bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 rounded-lg tabular-nums">
             {existing.pred_score_a} – {existing.pred_score_b}
           </span>
           <button

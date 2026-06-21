@@ -179,11 +179,11 @@ export default function PredictionsFeedPage() {
 
                       {/* Score */}
                       {isFinished ? (
-                        <span dir="ltr" className="text-lg font-black text-white tabular-nums shrink-0">
+                        <span className="text-lg font-black text-white tabular-nums shrink-0">
                           {m.score_a}–{m.score_b}
                         </span>
                       ) : m.status === 'IN_PLAY' ? (
-                        <span dir="ltr" className="text-base font-black text-yellow-300 tabular-nums shrink-0">
+                        <span className="text-base font-black text-yellow-300 tabular-nums shrink-0">
                           {m.score_a ?? 0}–{m.score_b ?? 0}
                         </span>
                       ) : null}
@@ -302,7 +302,7 @@ function PredRow({
           אוטומטי
         </span>
       )}
-      <span dir="ltr" className={`text-xs font-black px-2 py-0.5 rounded border tabular-nums shrink-0 ${
+      <span className={`text-xs font-black px-2 py-0.5 rounded border tabular-nums shrink-0 ${
         oc ? oc.badge : 'text-gray-100 bg-white/5 border-white/10'
       }`}>
         {pred.pred_score_a ?? '?'}–{pred.pred_score_b ?? '?'}
