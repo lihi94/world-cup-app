@@ -51,7 +51,8 @@ export default function PredictionsFeedPage() {
 
     if (tab === 'finished') {
       // Friendlies don't count for points — hide them from the finished feed.
-      q = q.eq('status', 'FINISHED').neq('stage', 'FRIENDLY').order('start_time', { ascending: false }).limit(30)
+      // Limit covers the whole tournament (104 matches) so none are ever cut off.
+      q = q.eq('status', 'FINISHED').neq('stage', 'FRIENDLY').order('start_time', { ascending: false }).limit(120)
     } else if (tab === 'live') {
       q = q.eq('status', 'IN_PLAY').order('start_time', { ascending: true })
     } else {
@@ -179,11 +180,11 @@ export default function PredictionsFeedPage() {
 
                       {/* Score */}
                       {isFinished ? (
-                        <span dir="ltr" className="text-lg font-black text-white tabular-nums shrink-0">
+                        <span className="text-lg font-black text-white tabular-nums shrink-0">
                           {m.score_a}–{m.score_b}
                         </span>
                       ) : m.status === 'IN_PLAY' ? (
-                        <span dir="ltr" className="text-base font-black text-yellow-300 tabular-nums shrink-0">
+                        <span className="text-base font-black text-yellow-300 tabular-nums shrink-0">
                           {m.score_a ?? 0}–{m.score_b ?? 0}
                         </span>
                       ) : null}
@@ -302,7 +303,7 @@ function PredRow({
           אוטומטי
         </span>
       )}
-      <span dir="ltr" className={`text-xs font-black px-2 py-0.5 rounded border tabular-nums shrink-0 ${
+      <span className={`text-xs font-black px-2 py-0.5 rounded border tabular-nums shrink-0 ${
         oc ? oc.badge : 'text-gray-100 bg-white/5 border-white/10'
       }`}>
         {pred.pred_score_a ?? '?'}–{pred.pred_score_b ?? '?'}
