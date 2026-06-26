@@ -306,7 +306,7 @@ Deno.serve(async () => {
 
       const { data: existing } = await supabase
         .from('matches')
-        .select('status, external_id, score_a, score_b')
+        .select('status, external_id, score_a, score_b, stage')
         .eq('external_id', m.id)
         .maybeSingle()
 
@@ -316,6 +316,13 @@ Deno.serve(async () => {
       // ESPN already ran this tick; don't let football-data undo it.
       if (existing.status === 'FINISHED' && mappedStatus !== 'FINISHED') continue
       if (existing.status === 'IN_PLAY' && mappedStatus === 'SCHEDULED') continue
+      // Never downgrade a knockout stage back to GROUP. football-data labels the
+      // whole tournament GROUP_STAGE until the bracket is drawn; block 2.5 (and
+      // the schedule windows) own the knockout tagging. Without this, every tick
+      // briefly flips R32/R16 to GROUP before block 2.5 re-fixes it.
+      if (mappedStage === 'GROUP' && ['R32', 'R16', 'QF', 'SF', 'THIRD', 'FINAL'].includes(existing.stage)) {
+        delete payload.stage
+      }
       if (existing.score_a !== null && payload.score_a === null) {
         delete payload.score_a
         delete payload.score_b
