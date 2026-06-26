@@ -348,43 +348,31 @@ Deno.serve(async () => {
     console.error(`football-data block failed: ${e}`)
   }
 
-  // ── 2.5 Knockout stage tagging from ESPN calendar ────────────────────────
+  // ── 2.5 Knockout stage tagging (R32 / R16) ───────────────────────────────
   // football-data labels the whole tournament 'GROUP_STAGE' until the bracket is
   // officially drawn, so Round-of-32 / Round-of-16 matches sit mislabeled as
   // GROUP (wrong bracket display AND wrong scoring — knockout is 4/3 + qualifier,
-  // not 3/2). ESPN's calendar gives authoritative date windows per round. Retag
-  // any GROUP match that falls in the R32 or R16 window. Runs AFTER football-data
-  // so it overrides the GROUP it just wrote; runs BEFORE scoring so points use
-  // the right stage. Self-correcting (re-reads windows each tick) and idempotent
-  // (only matches still-GROUP rows). QF/SF/THIRD/FINAL are left untouched —
-  // football-data already tags those correctly and their windows overlap.
+  // not 3/2). The schedule is fixed, so we retag by the authoritative round
+  // date-windows (taken from ESPN's tournament calendar). Runs AFTER football-data
+  // (overrides the GROUP it just wrote) and BEFORE scoring (so points use the
+  // right stage). Idempotent — only touches still-GROUP rows. QF/SF/THIRD/FINAL
+  // are left to football-data, which tags those correctly.
+  const KNOCKOUT_WINDOWS: Array<[string, string, string]> = [
+    ['R32', '2026-06-28T07:00:00Z', '2026-07-04T06:59:59Z'],
+    ['R16', '2026-07-04T07:00:00Z', '2026-07-09T06:59:59Z'],
+  ]
   try {
-    const calRes = await fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard')
-    if (calRes.ok) {
-      const calendar = (await calRes.json())?.leagues?.[0]?.calendar ?? []
-      const windowFor = (needle: string) => {
-        const e = calendar.find((c: { label?: string }) => (c.label ?? '').toLowerCase().includes(needle))
-        return e ? { start: e.startDate as string, end: e.endDate as string } : null
-      }
-      const rounds: Array<[string, { start: string; end: string } | null]> = [
-        ['R32', windowFor('round of 32')],
-        ['R16', windowFor('of 16')],
-      ]
-      for (const [stage, win] of rounds) {
-        if (!win) continue
-        const { error } = await supabase
-          .from('matches')
-          .update({ stage })
-          .eq('stage', 'GROUP')
-          .gte('start_time', win.start)
-          .lte('start_time', win.end)
-        if (error) console.error(`stage retag ${stage} failed: ${error.message}`)
-      }
-    } else {
-      console.error(`ESPN calendar fetch failed ${calRes.status}`)
+    for (const [stage, start, end] of KNOCKOUT_WINDOWS) {
+      const { error } = await supabase
+        .from('matches')
+        .update({ stage })
+        .eq('stage', 'GROUP')
+        .gte('start_time', start)
+        .lte('start_time', end)
+      if (error) console.error(`stage retag ${stage} failed: ${error.message}`)
     }
   } catch (e) {
-    console.error(`ESPN calendar stage-tagging failed: ${e}`)
+    console.error(`knockout stage-tagging failed: ${e}`)
   }
 
   // ── 3. Score finished matches (self-healing) ─────────────────────────────
