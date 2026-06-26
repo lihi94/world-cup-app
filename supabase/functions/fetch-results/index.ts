@@ -321,6 +321,16 @@ Deno.serve(async () => {
         delete payload.score_b
         delete payload.winner_id
       }
+      // Freeze a FINISHED match's score once it's set. The free-tier replica
+      // sometimes counts a goal that was later cancelled by VAR (Spain showed
+      // 5-0 vs the real 4-0). ESPN sets the authoritative final first; don't let
+      // a late football-data tick overwrite it. A NULL score is still allowed to
+      // fill — that's the knockout-ET path waiting for regularTime.
+      if (existing.status === 'FINISHED' && existing.score_a !== null) {
+        delete payload.score_a
+        delete payload.score_b
+        delete payload.winner_id
+      }
 
       await supabase
         .from('matches')
@@ -336,6 +346,45 @@ Deno.serve(async () => {
   }
   } catch (e) {
     console.error(`football-data block failed: ${e}`)
+  }
+
+  // ── 2.5 Knockout stage tagging from ESPN calendar ────────────────────────
+  // football-data labels the whole tournament 'GROUP_STAGE' until the bracket is
+  // officially drawn, so Round-of-32 / Round-of-16 matches sit mislabeled as
+  // GROUP (wrong bracket display AND wrong scoring — knockout is 4/3 + qualifier,
+  // not 3/2). ESPN's calendar gives authoritative date windows per round. Retag
+  // any GROUP match that falls in the R32 or R16 window. Runs AFTER football-data
+  // so it overrides the GROUP it just wrote; runs BEFORE scoring so points use
+  // the right stage. Self-correcting (re-reads windows each tick) and idempotent
+  // (only matches still-GROUP rows). QF/SF/THIRD/FINAL are left untouched —
+  // football-data already tags those correctly and their windows overlap.
+  try {
+    const calRes = await fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard')
+    if (calRes.ok) {
+      const calendar = (await calRes.json())?.leagues?.[0]?.calendar ?? []
+      const windowFor = (needle: string) => {
+        const e = calendar.find((c: { label?: string }) => (c.label ?? '').toLowerCase().includes(needle))
+        return e ? { start: e.startDate as string, end: e.endDate as string } : null
+      }
+      const rounds: Array<[string, { start: string; end: string } | null]> = [
+        ['R32', windowFor('round of 32')],
+        ['R16', windowFor('of 16')],
+      ]
+      for (const [stage, win] of rounds) {
+        if (!win) continue
+        const { error } = await supabase
+          .from('matches')
+          .update({ stage })
+          .eq('stage', 'GROUP')
+          .gte('start_time', win.start)
+          .lte('start_time', win.end)
+        if (error) console.error(`stage retag ${stage} failed: ${error.message}`)
+      }
+    } else {
+      console.error(`ESPN calendar fetch failed ${calRes.status}`)
+    }
+  } catch (e) {
+    console.error(`ESPN calendar stage-tagging failed: ${e}`)
   }
 
   // ── 3. Score finished matches (self-healing) ─────────────────────────────

@@ -41,12 +41,14 @@ npm run test       # טסטים (vitest)
 
 | Function | Version | תפקיד |
 |----------|---------|--------|
-| `fetch-results` | v16 | מעדכן תוצאות כל **5 דקות** (pg_cron job id=2) |
+| `fetch-results` | v17 | מעדכן תוצאות כל **5 דקות** (pg_cron job id=2) |
 | `fetch-odds` | v6 | מושך יחסי הימורים מ-The Odds API |
 | `score-predictions` | v6 | מחשב נקודות לאחר סיום משחק (idempotent — קובע points_earned, לא incremental) |
 | `debug-match` | v2 | כלי דיבאג — מחזיר משחק גולמי מ-football-data (דורש JWT) |
 
-**עמידות `fetch-results` (v16, נלמד ממשחקי הפתיחה 11–12/6):**
+**עמידות `fetch-results` (v17, נלמד ממשחקי הפתיחה 11–12/6):**
+- **הקפאת תוצאה סופית (v17, ספרד–סעודיה 21/6)**: ברגע שמשחק FINISHED עם תוצאה לא-null, football-data **לא** יכול לדרוס את `score_a/score_b/winner_id`. הרפליקה החינמית ספרה גול שבוטל ב-VAR (5–0 במקום 4–0) ודרסה את ה-4–0 הנכון שESPN כתב. עכשיו ESPN קובע סופי וזה מוקפא; מילוי תוצאה ריקה עדיין מותר (מסלול הארכות בנוקאאוט). הצלבה מול ESPN של כל 37 המשחקים שהסתיימו אישרה שזו הייתה התקלה היחידה.
+- **תיוג נוקאאוט מלוח ESPN (v17, בלוק 2.5)**: football-data מתייג את כל הטורניר `GROUP_STAGE` עד שהבראקט נמשך רשמית, אז משחקי R32/R16 יושבים מתויגים GROUP בטעות (גם בראקט שגוי וגם ניקוד שגוי — נוקאאוט הוא 4/3 + בונוס, לא 3/2). הלוח של ESPN (`leagues[0].calendar`) נותן חלונות-תאריך מוסמכים לכל סבב. הבלוק רץ **אחרי** football-data (דורס את ה-GROUP שהוא כתב) ו**לפני** הניקוד (שהנקודות יהיו נכונות), ומתייג כל משחק GROUP שנופל בחלון R32 (28/6 07:00Z–4/7) או R16 (4/7 07:00Z–9/7). idempotent ומתקן-עצמו. QF/SF/THIRD/FINAL לא נגעים (football-data כבר מתייג אותם נכון). אומת: 72 GROUP / 16 R32 / 8 R16 / 4 QF / 2 SF / 1 THIRD / 1 FINAL = 104.
 - football-data בחינמי מגיש רפליקות לא עקביות — סטטוס מתנדנד בין TIMED ל-FINISHED, ולפעמים FINISHED בלי תוצאה.
 - לכן: לא כותבים FINISHED בלי תוצאה; אסור downgrade ממשחק FINISHED; אסור לדרוס תוצאה קיימת ב-NULL.
 - **ESPN רץ ראשון** (לפני football-data) — מסמן IN_PLAY ברגע שהמשחק מתחיל לפי ESPN, לפני שfootball-data מספיק לסמן FINISHED באותו tick. football-data רץ שני ומעדכן stage/teams/future, ולא יכול להוריד סטטוס ממה שESPN כבר כתב.
