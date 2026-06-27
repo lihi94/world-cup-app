@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../../services/supabase'
 import { isPredictionOpen, locksInLabel } from '../../utils/date'
 import { he } from '../../i18n/he'
 import PredictionStats from './PredictionStats'
@@ -12,12 +11,9 @@ interface PredictionFormProps {
   onSave: (scoreA: number, scoreB: number, qualifierId: string | null) => Promise<{ error: string | null }>
 }
 
-const isKnockout = (stage: string) => stage !== 'GROUP' && stage !== 'FRIENDLY'
-
 export default function PredictionForm({ match, existing, onSave }: PredictionFormProps) {
   const [scoreA, setScoreA] = useState<string>(existing?.pred_score_a?.toString() ?? '')
   const [scoreB, setScoreB] = useState<string>(existing?.pred_score_b?.toString() ?? '')
-  const [qualifierId, setQualifierId] = useState<string>(existing?.pred_qualifier_id ?? '')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
@@ -25,7 +21,6 @@ export default function PredictionForm({ match, existing, onSave }: PredictionFo
   const [, setTick] = useState(0)
 
   const open = isPredictionOpen(match.start_time)
-  const knockout = isKnockout(match.stage)
 
   // Refresh countdown every 30s
   useEffect(() => {
@@ -42,14 +37,11 @@ export default function PredictionForm({ match, existing, onSave }: PredictionFo
       setError('יש להזין תוצאה תקינה')
       return
     }
-    if (knockout && !qualifierId) {
-      setError('יש לבחור את הקבוצה העולה')
-      return
-    }
 
     setSaving(true)
     setError('')
-    const { error: saveErr } = await onSave(a, b, knockout ? qualifierId || null : null)
+    // Only the 90-minute score is predicted — no "who advances" qualifier.
+    const { error: saveErr } = await onSave(a, b, null)
     setSaving(false)
 
     if (saveErr) {
@@ -90,15 +82,6 @@ export default function PredictionForm({ match, existing, onSave }: PredictionFo
         </div>
         <TeamCrest team={match.team_b} />
       </div>
-
-      {knockout && (
-        <QualifierSelect
-          teamA={match.team_a ?? null}
-          teamB={match.team_b ?? null}
-          value={qualifierId}
-          onChange={setQualifierId}
-        />
-      )}
 
       {error && (
         <p className="bg-red-500/15 border border-red-500/30 text-red-300 rounded-xl px-3 py-2 text-sm text-center font-medium">
@@ -174,41 +157,6 @@ function TeamCrest({ team }: { team?: Team }) {
       <span className="text-xs text-gray-600 text-center max-w-16 leading-tight">
         {team.name_he ?? team.name}
       </span>
-    </div>
-  )
-}
-
-function QualifierSelect({
-  teamA, teamB, value, onChange,
-}: {
-  teamA: Team | null; teamB: Team | null; value: string; onChange: (v: string) => void
-}) {
-  const [extraTeams, setExtraTeams] = useState<Team[]>([])
-
-  useEffect(() => {
-    // Load all teams for cases where we need to show the full list
-    supabase.from('teams').select('*').then(({ data }) => {
-      setExtraTeams((data as Team[]) ?? [])
-    })
-  }, [])
-
-  const options = teamA && teamB ? [teamA, teamB] : extraTeams
-
-  return (
-    <div>
-      <label className="block text-xs font-bold text-gray-400 mb-1.5 uppercase tracking-wider">{he.qualifier}</label>
-      <select
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        className="w-full bg-slate-800/60 border border-white/10 text-white rounded-xl px-3 py-2.5 text-right focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
-      >
-        <option value="">— בחר קבוצה עולה —</option>
-        {options.map(t => (
-          <option key={t.id} value={t.id}>
-            {t.name_he ?? t.name}
-          </option>
-        ))}
-      </select>
     </div>
   )
 }

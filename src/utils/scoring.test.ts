@@ -40,20 +40,17 @@ describe('calculatePoints — R16/QF/SF', () => {
   it('wrong direction returns 0', () => {
     expect(calculatePoints(0, 1, null, 1, 0, null, 'SF')).toBe(0)
   })
-  it('exact score + correct qualifier = 5', () => {
+  it('qualifier is ignored — exact stays 4 regardless of advancing team', () => {
     const qualId = 'team-a-uuid'
-    expect(calculatePoints(1, 0, qualId, 1, 0, qualId, 'R16')).toBe(5)
+    expect(calculatePoints(1, 0, qualId, 1, 0, qualId, 'R16')).toBe(4)
   })
-  it('correct direction + correct qualifier = 4', () => {
+  it('qualifier is ignored — correct direction stays 3', () => {
     const qualId = 'team-a-uuid'
-    expect(calculatePoints(2, 0, qualId, 1, 0, qualId, 'QF')).toBe(4)
+    expect(calculatePoints(2, 0, qualId, 1, 0, qualId, 'QF')).toBe(3)
   })
-  it('exact score + wrong qualifier = 4', () => {
-    expect(calculatePoints(1, 0, 'team-a', 1, 0, 'team-b', 'R16')).toBe(4)
-  })
-  it('wrong direction + correct qualifier = 1', () => {
+  it('qualifier is ignored — wrong direction stays 0', () => {
     const qualId = 'team-b-uuid'
-    expect(calculatePoints(0, 1, qualId, 1, 0, qualId, 'SF')).toBe(1)
+    expect(calculatePoints(0, 1, qualId, 1, 0, qualId, 'SF')).toBe(0)
   })
 })
 
@@ -67,16 +64,16 @@ describe('calculatePoints — FINAL', () => {
   it('wrong direction returns 0', () => {
     expect(calculatePoints(0, 1, null, 1, 0, null, 'FINAL')).toBe(0)
   })
-  it('exact score + correct winner = 6', () => {
+  it('winner pick is ignored — exact stays 5', () => {
     const wid = 'winner-uuid'
-    expect(calculatePoints(2, 1, wid, 2, 1, wid, 'FINAL')).toBe(6)
+    expect(calculatePoints(2, 1, wid, 2, 1, wid, 'FINAL')).toBe(5)
   })
-  it('correct direction + correct winner = 5', () => {
+  it('winner pick is ignored — correct direction stays 4', () => {
     const wid = 'winner-uuid'
-    expect(calculatePoints(1, 0, wid, 3, 0, wid, 'FINAL')).toBe(5)
+    expect(calculatePoints(1, 0, wid, 3, 0, wid, 'FINAL')).toBe(4)
   })
-  it('wrong direction + correct winner = 1', () => {
+  it('winner pick is ignored — wrong direction stays 0', () => {
     const wid = 'winner-uuid'
-    expect(calculatePoints(0, 1, wid, 1, 0, wid, 'FINAL')).toBe(1)
+    expect(calculatePoints(0, 1, wid, 1, 0, wid, 'FINAL')).toBe(0)
   })
 })

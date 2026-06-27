@@ -4,44 +4,30 @@
 //
 // POST body: { external_id: number }   (football-data.org match ID)
 // Also accepts: { match_id: string }   (internal UUID, for admin override)
+//
+// v7: removed the knockout "who advances" qualifier bonus. Scoring is based
+// on the 90-minute result only, at every stage (group and knockout alike).
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 type Stage = 'FRIENDLY' | 'GROUP' | 'R32' | 'R16' | 'QF' | 'SF' | 'THIRD' | 'FINAL'
 
-// CRITICAL: if/else if chain — two separate `if` blocks would double-count
-// direction points when prediction is exact (e.g. group exact = 3, not 2+3=5).
 function calculatePoints(
   predA: number,
   predB: number,
-  predQualId: string | null,
   actualA: number,
   actualB: number,
-  winnerId: string | null,
   stage: Stage
 ): number {
   const isExact = predA === actualA && predB === actualB
-  const predDir = Math.sign(predA - predB)
-  const actualDir = Math.sign(actualA - actualB)
-  const isCorrectDir = predDir === actualDir
+  const isCorrectDir = Math.sign(predA - predB) === Math.sign(actualA - actualB)
 
   // FRIENDLY = pre-tournament warmup — does NOT count for the league.
   if (stage === 'FRIENDLY') return 0
-
-  let pts = 0
-
-  if (stage === 'GROUP') {
-    pts = isExact ? 3 : isCorrectDir ? 2 : 0
-  } else if (stage === 'FINAL') {
-    pts = isExact ? 5 : isCorrectDir ? 4 : 0
-    if (winnerId && predQualId === winnerId) pts += 1
-  } else {
-    // R32, R16, QF, SF, THIRD — all knockout (non-final)
-    pts = isExact ? 4 : isCorrectDir ? 3 : 0
-    if (winnerId && predQualId === winnerId) pts += 1
-  }
-
-  return pts
+  if (stage === 'GROUP') return isExact ? 3 : isCorrectDir ? 2 : 0
+  if (stage === 'FINAL') return isExact ? 5 : isCorrectDir ? 4 : 0
+  // R32, R16, QF, SF, THIRD — knockout, 90-minute result only (no qualifier bonus).
+  return isExact ? 4 : isCorrectDir ? 3 : 0
 }
 
 Deno.serve(async (req) => {
@@ -87,10 +73,8 @@ Deno.serve(async (req) => {
     const pts = calculatePoints(
       pred.pred_score_a,
       pred.pred_score_b,
-      pred.pred_qualifier_id,
       match.score_a,
       match.score_b,
-      match.winner_id,
       match.stage as Stage
     )
 

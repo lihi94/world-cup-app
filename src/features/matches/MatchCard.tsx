@@ -206,7 +206,7 @@ export default function MatchCard({ match, myPrediction, onQuickSave }: MatchCar
 /**
  * Inline one-tap prediction editor shown on the dashboard card.
  * Saved state collapses to a compact "ניחשת" row with an edit button.
- * Knockout: qualifier is implied by the score; only a draw asks "מי עולה?".
+ * Only the 90-minute score is predicted — no "who advances" qualifier pick.
  */
 function QuickPredict({
   match, existing, onSave,
@@ -218,13 +218,9 @@ function QuickPredict({
   const [editing, setEditing] = useState(false)
   const [a, setA] = useState(existing?.pred_score_a ?? 0)
   const [b, setB] = useState(existing?.pred_score_b ?? 0)
-  const [qual, setQual] = useState<string>(existing?.pred_qualifier_id ?? '')
   const [saving, setSaving] = useState(false)
   const [justSaved, setJustSaved] = useState(false)
   const [err, setErr] = useState('')
-
-  const knockout = match.stage !== 'GROUP' && match.stage !== 'FRIENDLY'
-  const needsQualChoice = knockout && a === b
 
   if (existing && !editing) {
     return (
@@ -241,7 +237,6 @@ function QuickPredict({
             onClick={() => {
               setA(existing.pred_score_a ?? 0)
               setB(existing.pred_score_b ?? 0)
-              setQual(existing.pred_qualifier_id ?? '')
               setErr('')
               setEditing(true)
             }}
@@ -255,19 +250,9 @@ function QuickPredict({
   }
 
   async function save() {
-    let qualifierId: string | null = null
-    if (knockout) {
-      if (a > b) qualifierId = match.team_a_id
-      else if (b > a) qualifierId = match.team_b_id
-      else qualifierId = qual || null
-      if (!qualifierId) {
-        setErr('תיקו — בחר מי עולה')
-        return
-      }
-    }
     setSaving(true)
     setErr('')
-    const { error } = await onSave(match.id, a, b, qualifierId)
+    const { error } = await onSave(match.id, a, b, null)
     setSaving(false)
     if (error) {
       setErr(error)
@@ -285,29 +270,6 @@ function QuickPredict({
         <span className="text-gray-500 font-black text-lg">–</span>
         <MiniStepper value={b} onChange={setB} />
       </div>
-
-      {needsQualChoice && (
-        <div className="flex items-center justify-center gap-2">
-          <span className="text-[10px] text-gray-400 font-bold">מי עולה?</span>
-          {[
-            { id: match.team_a_id, name: match.team_a?.name_he ?? match.team_a?.name ?? '?' },
-            { id: match.team_b_id, name: match.team_b?.name_he ?? match.team_b?.name ?? '?' },
-          ].map(t => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setQual(t.id!)}
-              className={`text-xs font-bold px-2.5 py-1 rounded-full border transition active:scale-95 ${
-                qual === t.id
-                  ? 'bg-emerald-500/25 border-emerald-500/50 text-emerald-200'
-                  : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
-              }`}
-            >
-              <bdi>{t.name}</bdi>
-            </button>
-          ))}
-        </div>
-      )}
 
       {err && (
         <p className="bg-red-500/15 border border-red-500/30 text-red-300 rounded-lg px-3 py-1.5 text-xs text-center font-medium">{err}</p>

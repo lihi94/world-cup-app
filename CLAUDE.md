@@ -114,8 +114,9 @@ src/
 ### ניקוד
 - **FRIENDLY: 0 — משחקי ידידות לא נספרים לטבלה** (ניחושים נשמרים ומוצגים, אבל ללא נקודות). ראה מיגרציות 020/024.
 - GROUP: exact=3, direction=2, miss=0
-- R16/QF/SF: exact=4, direction=3, miss=0, qualifier=+1
-- FINAL: exact=5, direction=4, miss=0, qualifier=+1
+- R32/R16/QF/SF: exact=4, direction=3, miss=0
+- FINAL: exact=5, direction=4, miss=0
+- **אין בונוס "מי עולה" (qualifier) בשום שלב** — ניקוד הנוקאאוט מבוסס רק על תוצאת 90 דקות, בדיוק כמו הבתים. הוסר מה-UI (MatchCard, PredictionForm) ומהניקוד (`score-predictions`, `utils/scoring.ts`) — `pred_qualifier_id` נשאר בסכמה אך לא נכתב/נקרא יותר.
 - Golden Bets: אלוף=+8, מלך שערים=+8
 - **חובה** להשתמש ב-`if/else if` ולא שני `if` נפרדים (מונע double counting)
 

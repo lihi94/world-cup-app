@@ -4,43 +4,34 @@
 
 import type { MatchStage } from '../types'
 
+// Scoring is based on the 90-minute result only. Knockout matches have NO
+// advancing-team (qualifier) bonus — predQualId/winnerId are kept in the
+// signature to mirror the Edge Function but are no longer used.
 export function calculatePoints(
   predA: number,
   predB: number,
-  predQualId: string | null,
+  _predQualId: string | null,
   actualA: number,
   actualB: number,
-  winnerId: string | null,
+  _winnerId: string | null,
   stage: MatchStage
 ): number {
   const isExact = predA === actualA && predB === actualB
-  const predDir = Math.sign(predA - predB)
-  const actualDir = Math.sign(actualA - actualB)
-  const isCorrectDir = predDir === actualDir
+  const isCorrectDir = Math.sign(predA - predB) === Math.sign(actualA - actualB)
 
   // FRIENDLY = pre-tournament warmup — does NOT count for the league.
   if (stage === 'FRIENDLY') return 0
-
-  let pts = 0
-
-  if (stage === 'GROUP') {
-    pts = isExact ? 3 : isCorrectDir ? 2 : 0
-  } else if (stage === 'FINAL') {
-    pts = isExact ? 5 : isCorrectDir ? 4 : 0
-    if (winnerId && predQualId === winnerId) pts += 1
-  } else {
-    pts = isExact ? 4 : isCorrectDir ? 3 : 0
-    if (winnerId && predQualId === winnerId) pts += 1
-  }
-
-  return pts
+  if (stage === 'GROUP') return isExact ? 3 : isCorrectDir ? 2 : 0
+  if (stage === 'FINAL') return isExact ? 5 : isCorrectDir ? 4 : 0
+  // R32 / R16 / QF / SF — 90-minute result only.
+  return isExact ? 4 : isCorrectDir ? 3 : 0
 }
 
 export function maxPointsForStage(stage: MatchStage): number {
   if (stage === 'FRIENDLY') return 0
   if (stage === 'GROUP') return 3
-  if (stage === 'FINAL') return 6
-  return 5
+  if (stage === 'FINAL') return 5
+  return 4
 }
 
 export function pointsLabel(pts: number): string {
