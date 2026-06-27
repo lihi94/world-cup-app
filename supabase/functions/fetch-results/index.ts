@@ -41,6 +41,14 @@
 // (its competitor.winner flag covers shootouts) but leaves the score to
 // football-data's regularTime. The leaderboard is also reconciled every tick
 // (reconcile_total_points) so total_points can never silently drift.
+//
+// Knockout team-name backfill (v20): football-data lags ESPN by hours/days in
+// filling a knockout fixture's real teams. Block 2.6 looks up each upcoming
+// knockout match still missing a side on ESPN's scoreboard and fills the real
+// team(s) by name. Block 2 gained an orientation lock — football-data may
+// never overwrite an already-set team side — so a side filled by ESPN (or by
+// football-data first) can't later be flipped, which would misattribute
+// predictions already placed on that knockout match.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -70,6 +78,20 @@ const STAGE_MAP: Record<string, string> = {
   'THIRD_PLACE': 'THIRD',      // football-data.org name for 3rd-place playoff
   'THIRD_PLACE_PLAY_OFF': 'THIRD', // alternate spelling some competitions use
   'FINAL': 'FINAL',
+}
+
+const KNOCKOUT_STAGES = ['R32', 'R16', 'QF', 'SF', 'THIRD', 'FINAL']
+
+// Loose name matching: shared token prefix handles naming gaps like
+// "Korea Republic" vs "South Korea", "Czech Republic" vs "Czechia", or
+// "Cape Verde" vs "Cape Verde Islands". Used by both the ESPN live-score
+// block and the ESPN knockout team-name backfill (block 2.6).
+const nameTokens = (s: string) =>
+  s.toLowerCase().replace(/[^a-z ]/g, '').split(/\s+/).filter(w => w.length >= 4)
+const namesOverlap = (x?: string, y?: string) => {
+  if (!x || !y) return false
+  const tx = nameTokens(x), ty = nameTokens(y)
+  return tx.some(a => ty.some(b => a.startsWith(b.slice(0, 5)) || b.startsWith(a.slice(0, 5))))
 }
 
 Deno.serve(async () => {
@@ -133,15 +155,7 @@ Deno.serve(async () => {
       } catch (_) { /* ESPN down — football-data will cover next tick */ }
     }
 
-    // Loose name matching: shared token prefix handles naming gaps like
-    // "Korea Republic" vs "South Korea" or "Czech Republic" vs "Czechia".
-    const tokens = (s: string) =>
-      s.toLowerCase().replace(/[^a-z ]/g, '').split(/\s+/).filter(w => w.length >= 4)
-    const namesOverlap = (x?: string, y?: string) => {
-      if (!x || !y) return false
-      const tx = tokens(x), ty = tokens(y)
-      return tx.some(a => ty.some(b => a.startsWith(b.slice(0, 5)) || b.startsWith(a.slice(0, 5))))
-    }
+    // (name-matching helpers nameTokens/namesOverlap are module-scoped above)
 
     for (const p of pending) {
       const kickoff = new Date(p.start_time).getTime()
@@ -306,11 +320,19 @@ Deno.serve(async () => {
 
       const { data: existing } = await supabase
         .from('matches')
-        .select('status, external_id, score_a, score_b, stage')
+        .select('status, external_id, score_a, score_b, stage, team_a_id, team_b_id')
         .eq('external_id', m.id)
         .maybeSingle()
 
       if (!existing) continue
+
+      // Orientation lock: never overwrite a team side that's already filled.
+      // Whoever sets a side first (football-data OR the ESPN backfill in block
+      // 2.6) owns the team_a/team_b orientation. Without this, football-data
+      // could flip the two sides of an already-determined knockout match,
+      // misattributing every prediction already placed on it.
+      if (existing.team_a_id) delete payload.team_a_id
+      if (existing.team_b_id) delete payload.team_b_id
 
       // Anti-downgrade guards — the free-tier serves inconsistent replicas.
       // ESPN already ran this tick; don't let football-data undo it.
@@ -380,6 +402,98 @@ Deno.serve(async () => {
     }
   } catch (e) {
     console.error(`knockout stage-tagging failed: ${e}`)
+  }
+
+  // ── 2.6 Knockout team-name backfill from ESPN ────────────────────────────
+  // football-data.org lags ESPN by hours/days in filling the real teams of
+  // knockout fixtures (it keeps both sides null until its own bracket draw
+  // syncs). ESPN resolves the matchup as soon as the feeding group is decided.
+  // So for any upcoming knockout match still missing a side, look it up on
+  // ESPN's scoreboard by kickoff time and fill the missing team(s) by name.
+  //
+  // Orientation safety: if one side is already set, we match it to the right
+  // ESPN competitor and fill only the OTHER side — preserving orientation. If
+  // both are null we seed team_a=ESPN home, team_b=ESPN away, and block 2's
+  // orientation lock then prevents football-data from later flipping them.
+  let knockoutFilled = 0
+  try {
+    const { data: teamRows } = await supabase.from('teams').select('id, name')
+    const resolveTeam = (espnName?: string): string | null => {
+      if (!espnName) return null
+      for (const t of teamRows ?? []) {
+        if (namesOverlap(t.name, espnName)) return t.id
+      }
+      return null
+    }
+
+    const { data: needTeams } = await supabase
+      .from('matches')
+      .select('id, external_id, start_time, team_a_id, team_b_id, team_a:teams!team_a_id(name), team_b:teams!team_b_id(name)')
+      .in('stage', KNOCKOUT_STAGES)
+      .neq('status', 'FINISHED')
+      .gt('start_time', new Date(nowMs - 3 * 3_600_000).toISOString())
+      .lt('start_time', new Date(nowMs + 12 * 86_400_000).toISOString())
+      .or('team_a_id.is.null,team_b_id.is.null')
+
+    if (needTeams && needTeams.length > 0) {
+      // Gather ESPN events across each match's UTC date and the day before
+      // (ESPN buckets by US local date), dedupe by event id.
+      const koDates = new Set<string>()
+      for (const p of needTeams) {
+        const t = new Date(p.start_time).getTime()
+        for (const d of [t, t - 86_400_000]) {
+          koDates.add(new Date(d).toISOString().slice(0, 10).replace(/-/g, ''))
+        }
+      }
+      const koEvents: any[] = []
+      const koSeen = new Set<string>()
+      for (const d of koDates) {
+        try {
+          const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=${d}`)
+          if (!r.ok) continue
+          for (const e of (await r.json()).events ?? []) {
+            if (!koSeen.has(e.id)) { koSeen.add(e.id); koEvents.push(e) }
+          }
+        } catch (_) { /* ESPN down — retry next tick */ }
+      }
+
+      for (const p of needTeams) {
+        const kickoff = new Date(p.start_time).getTime()
+        const ev = koEvents.find(e => Math.abs(new Date(e.date).getTime() - kickoff) < 30 * 60_000)
+        if (!ev) continue
+        const comp = ev.competitions?.[0]
+        const home = comp?.competitors?.find((c: any) => c.homeAway === 'home')
+        const away = comp?.competitors?.find((c: any) => c.homeAway === 'away')
+        const homeName = home?.team?.displayName
+        const awayName = away?.team?.displayName
+        const homeId = resolveTeam(homeName)
+        const awayId = resolveTeam(awayName)
+        // Only act when BOTH ESPN sides resolve to real teams in our DB.
+        // A placeholder ("Third Place Group A/B/C") resolves to null, so a
+        // half-known fixture stays half-known until its partner is real.
+        if (!homeId || !awayId) continue
+
+        const update: Record<string, string> = {}
+        if (p.team_a_id && !p.team_b_id) {
+          // team_a fixed — the empty team_b is whichever ESPN side ≠ team_a
+          const aName = (p as any).team_a?.name
+          update.team_b_id = namesOverlap(aName, homeName) ? awayId : homeId
+        } else if (!p.team_a_id && p.team_b_id) {
+          const bName = (p as any).team_b?.name
+          update.team_a_id = namesOverlap(bName, homeName) ? awayId : homeId
+        } else if (!p.team_a_id && !p.team_b_id) {
+          update.team_a_id = homeId
+          update.team_b_id = awayId
+        }
+        if (Object.keys(update).length === 0) continue
+
+        const { error } = await supabase.from('matches').update(update).eq('id', p.id)
+        if (error) console.error(`knockout backfill ${p.external_id} failed: ${error.message}`)
+        else knockoutFilled++
+      }
+    }
+  } catch (e) {
+    console.error(`knockout team-name backfill failed: ${e}`)
   }
 
   // ── 3. Score finished matches (self-healing) ─────────────────────────────
@@ -470,7 +584,7 @@ Deno.serve(async () => {
   }
 
   return new Response(
-    JSON.stringify({ fdUpdated, scored: newlyFinished.length, espnFixed, espnLive, timePromoted, pointsFixed, oddsRefreshed }),
+    JSON.stringify({ fdUpdated, scored: newlyFinished.length, espnFixed, espnLive, timePromoted, knockoutFilled, pointsFixed, oddsRefreshed }),
     { headers: { 'Content-Type': 'application/json' } }
   )
 })
