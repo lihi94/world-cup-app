@@ -98,7 +98,11 @@ export default function PredictionsFeedPage() {
 
   // Group matches by group_name (group stage) or stage (knockout).
   // Sections come back in tournament order: A→L, then R32→Final.
-  const sections = useMemo(() => groupMatchesIntoSections(matches), [matches])
+  // Finished tab collapses the whole group stage into one "בתים" folder.
+  const sections = useMemo(
+    () => groupMatchesIntoSections(matches, { collapseGroups: tab === 'finished' }),
+    [matches, tab]
+  )
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-5 pb-24 space-y-5">

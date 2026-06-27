@@ -32,21 +32,33 @@ const KNOCKOUT_ICONS: Record<string, string> = {
  *
  * Sections are returned in tournament order: friendlies first (pre-tournament
  * warmup), then groups A→L, then knockout rounds in chronological round order.
+ *
+ * When `collapseGroups` is set, ALL group-stage matches collapse into a single
+ * "בתים" section instead of one per group letter — used by the finished tab so
+ * the long A→L list folds into one folder.
  */
-export function groupMatchesIntoSections(matches: Match[]): MatchSectionData[] {
+export function groupMatchesIntoSections(
+  matches: Match[],
+  options: { collapseGroups?: boolean } = {}
+): MatchSectionData[] {
   const friendlyBucket: Match[] = []
   const groupBuckets = new Map<string, Match[]>()  // key = group letter
+  const allGroupBucket: Match[] = []               // used when collapseGroups
   const stageBuckets = new Map<MatchStage, Match[]>()
 
   for (const m of matches) {
     if (m.stage === 'FRIENDLY') {
       friendlyBucket.push(m)
     } else if (m.stage === 'GROUP') {
-      // Use team_a's group_name; fall back to team_b's if team_a missing.
-      const g = m.team_a?.group_name ?? m.team_b?.group_name ?? '?'
-      const arr = groupBuckets.get(g) ?? []
-      arr.push(m)
-      groupBuckets.set(g, arr)
+      if (options.collapseGroups) {
+        allGroupBucket.push(m)
+      } else {
+        // Use team_a's group_name; fall back to team_b's if team_a missing.
+        const g = m.team_a?.group_name ?? m.team_b?.group_name ?? '?'
+        const arr = groupBuckets.get(g) ?? []
+        arr.push(m)
+        groupBuckets.set(g, arr)
+      }
     } else {
       const arr = stageBuckets.get(m.stage) ?? []
       arr.push(m)
@@ -64,6 +76,17 @@ export function groupMatchesIntoSections(matches: Match[]): MatchSectionData[] {
       icon: '🤝',
       accent: 'blue',
       matches: friendlyBucket,
+    })
+  }
+
+  // Collapsed mode: a single "בתים" folder for the whole group stage.
+  if (options.collapseGroups && allGroupBucket.length) {
+    sections.push({
+      key: 'groups_all',
+      title: 'בתים',
+      icon: '🏟️',
+      accent: 'emerald',
+      matches: allGroupBucket,
     })
   }
 
