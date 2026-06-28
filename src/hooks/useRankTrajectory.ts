@@ -45,7 +45,18 @@ export function useRankTrajectory(myUserId?: string | null): RankTrajectory {
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, () => load())
       .subscribe()
 
-    return () => { supabase.removeChannel(channel) }
+    // Belt-and-suspenders: realtime sockets drop silently when a phone locks
+    // or backgrounds the tab, so also poll every 60s and refetch the moment
+    // the page becomes visible again (matches the LIVE tab's polling pattern).
+    const interval = setInterval(load, 60_000)
+    const onVisible = () => { if (document.visibilityState === 'visible') load() }
+    document.addEventListener('visibilitychange', onVisible)
+
+    return () => {
+      supabase.removeChannel(channel)
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
   }, [])
 
   async function load() {
