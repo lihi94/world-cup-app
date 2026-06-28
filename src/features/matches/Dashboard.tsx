@@ -13,12 +13,6 @@ import { he } from '../../i18n/he'
 import { dateKey, formatDateHeader, formatKickoff } from '../../utils/date'
 import type { Match, Prediction } from '../../types'
 
-// Knockout rounds in bracket order. The dashboard reads these straight from the
-// DB `stage` column, which fetch-results keeps in sync with football-data every
-// 5 min — so a match auto-appears here the moment it's revealed as knockout.
-const KNOCKOUT_ORDER = ['R32', 'R16', 'QF', 'SF', 'THIRD', 'FINAL'] as const
-const KNOCKOUT_STAGES = new Set<string>(KNOCKOUT_ORDER)
-
 async function handleLogout() {
   if (confirm('להתנתק מהאפליקציה?')) {
     await supabase.auth.signOut()
@@ -31,7 +25,6 @@ export default function Dashboard() {
   const [upcomingMatches, setUpcomingMatches] = useState<Match[]>([])
   const [myPredictions, setMyPredictions] = useState<Map<string, Prediction>>(new Map())
   const [loading, setLoading] = useState(true)
-  const [showLocked, setShowLocked] = useState(true)
   const [profileOpen, setProfileOpen] = useState(false)
 
   async function updateProfile(nickname: string, avatar: string) {
@@ -100,20 +93,15 @@ export default function Dashboard() {
     return { error: null }
   }
 
-  // Split: bettable group matches (by date) + knockout bracket (by round).
-  const { bettable, knockoutRounds, dateSections } = useMemo(() => {
-    // Bettable = group-stage matches with both teams known. Knockout matches
-    // live in their own bracket section below, regardless of whether the teams
-    // are filled in yet.
-    const bet: Match[] = []
-    for (const m of upcomingMatches) {
-      if (!KNOCKOUT_STAGES.has(m.stage) && m.team_a_id && m.team_b_id) bet.push(m)
-    }
+  // Single date-grouped list for ALL remaining matches — group AND knockout
+  // alike, same flow the group stage always used. A knockout slot whose teams
+  // aren't both known yet still gets its date section, just rendered as a
+  // locked placeholder instead of a predictable MatchCard (see render below).
+  const { bettable, dateSections } = useMemo(() => {
+    const bet = upcomingMatches.filter(m => m.team_a_id && m.team_b_id)
 
-    // Group bettable matches by date (chronological, IL timezone) — keeps the
-    // dashboard focused on "what's today / what's tomorrow".
     const byDate = new Map<string, Match[]>()
-    for (const m of bet) {
+    for (const m of upcomingMatches) {
       const k = dateKey(m.start_time)
       const arr = byDate.get(k) ?? []
       arr.push(m)
@@ -121,24 +109,7 @@ export default function Dashboard() {
     }
     const datesArr = [...byDate.entries()].map(([k, ms]) => ({ key: k, matches: ms }))
 
-    // Knockout bracket: every knockout-stage match, grouped by round in order.
-    const byStage = new Map<string, Match[]>()
-    for (const m of upcomingMatches) {
-      if (!KNOCKOUT_STAGES.has(m.stage)) continue
-      const arr = byStage.get(m.stage) ?? []
-      arr.push(m)
-      byStage.set(m.stage, arr)
-    }
-    const rounds = KNOCKOUT_ORDER
-      .filter(s => byStage.has(s))
-      .map(s => ({
-        stage: s,
-        matches: byStage.get(s)!.sort(
-          (a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
-        ),
-      }))
-
-    return { bettable: bet, knockoutRounds: rounds, dateSections: datesArr }
+    return { bettable: bet, dateSections: datesArr }
   }, [upcomingMatches])
 
   if (loading) {
@@ -247,7 +218,7 @@ export default function Dashboard() {
           <span className="text-xs text-gray-500 font-medium">{bettable.length} משחקים</span>
         </div>
 
-        {bettable.length === 0 ? (
+        {dateSections.length === 0 ? (
           <div className="glass-card rounded-2xl py-12 flex flex-col items-center gap-3">
             <span className="text-5xl animate-float">📅</span>
             <p className="text-gray-300 text-sm">{he.noUpcoming}</p>
@@ -263,81 +234,39 @@ export default function Dashboard() {
                   </h3>
                   <span className="text-[10px] text-gray-500 font-medium">· {day.matches.length}</span>
                 </div>
-                {day.matches.map(m => (
-                  <MatchCard key={m.id} match={m} myPrediction={myPredictions.get(m.id)} onQuickSave={quickSave} />
-                ))}
+                {day.matches.map(m => {
+                  const bothKnown = !!(m.team_a_id && m.team_b_id)
+                  const oneKnown = m.team_a_id || m.team_b_id
+                  // Determined matchups (group or knockout) get a full
+                  // predictable card. A knockout slot still waiting on a group
+                  // result shows a locked placeholder in the same date section
+                  // instead of living in a separate bracket area — once both
+                  // teams are known it just turns into a normal card here.
+                  if (bothKnown) {
+                    return <MatchCard key={m.id} match={m} myPrediction={myPredictions.get(m.id)} onQuickSave={quickSave} />
+                  }
+                  return (
+                    <div key={m.id} className="glass-card rounded-xl px-3.5 py-2.5 flex items-center justify-between gap-2 opacity-70">
+                      <div className="min-w-0">
+                        {oneKnown ? (
+                          <p className="text-sm font-bold text-gray-300 truncate">
+                            <bdi>{teamName(m.team_a_id ? m.team_a : m.team_b)}</bdi> <span className="text-gray-500">×</span>{' '}
+                            <span className="text-gray-500">ייקבע</span>
+                          </p>
+                        ) : (
+                          <p className="text-sm font-bold text-gray-500">ייקבע</p>
+                        )}
+                        <p className="text-[10px] text-gray-500 mt-0.5">{formatKickoff(m.start_time)}</p>
+                      </div>
+                      <span className="text-[10px] text-gray-600 shrink-0">🔒</span>
+                    </div>
+                  )
+                })}
               </div>
             ))}
           </div>
         )}
       </section>
-
-      {/* Knockout bracket — grouped by round, auto-fills as matches are revealed */}
-      {knockoutRounds.length > 0 && (
-        <section className="animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
-          <button
-            onClick={() => setShowLocked(v => !v)}
-            className="w-full glass-card rounded-2xl px-4 py-3 flex items-center justify-between hover:bg-white/5 transition"
-          >
-            <div className="flex items-center gap-2">
-              <span className="text-xl">🏆</span>
-              <div className="text-right">
-                <p className="text-sm font-bold text-gray-200">משחקי נוקאאוט</p>
-                <p className="text-[10px] text-gray-500">מתעדכן אוטומטית ככל שנקבעים</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-amber-300 bg-amber-500/20 border border-amber-500/30 px-2 py-0.5 rounded-full">
-                {knockoutRounds.reduce((n, r) => n + r.matches.length, 0)}
-              </span>
-              <span className={`text-gray-400 transition-transform ${showLocked ? 'rotate-180' : ''}`}>▼</span>
-            </div>
-          </button>
-
-          {showLocked && (
-            <div className="mt-3 space-y-4 animate-fade-in-up">
-              {knockoutRounds.map(round => (
-                <div key={round.stage} className="space-y-2">
-                  <div className="flex items-center gap-2 px-1">
-                    <span className="w-1 h-4 bg-amber-500 rounded-full" />
-                    <h3 className="text-xs font-bold text-amber-300 uppercase tracking-wider">
-                      {he[round.stage as keyof typeof he] ?? round.stage}
-                    </h3>
-                    <span className="text-[10px] text-gray-500 font-medium">· {round.matches.length}</span>
-                  </div>
-                  {round.matches.map(m => {
-                    const bothKnown = !!(m.team_a_id && m.team_b_id)
-                    const oneKnown = m.team_a_id || m.team_b_id
-                    // Fully determined matchups get a full predictable card, like
-                    // group matches. Half-known slots (one side already clinched,
-                    // opponent still TBD) show that team's name instead of a blank
-                    // placeholder. Fully TBD slots show a locked placeholder.
-                    if (bothKnown) {
-                      return <MatchCard key={m.id} match={m} myPrediction={myPredictions.get(m.id)} onQuickSave={quickSave} />
-                    }
-                    return (
-                      <div key={m.id} className="glass-card rounded-xl px-3.5 py-2.5 flex items-center justify-between gap-2 opacity-70">
-                        <div className="min-w-0">
-                          {oneKnown ? (
-                            <p className="text-sm font-bold text-gray-300 truncate">
-                              <bdi>{teamName(m.team_a_id ? m.team_a : m.team_b)}</bdi> <span className="text-gray-500">×</span>{' '}
-                              <span className="text-gray-500">ייקבע</span>
-                            </p>
-                          ) : (
-                            <p className="text-sm font-bold text-gray-500">ייקבע</p>
-                          )}
-                          <p className="text-[10px] text-gray-500 mt-0.5">{formatKickoff(m.start_time)}</p>
-                        </div>
-                        <span className="text-[10px] text-gray-600 shrink-0">🔒</span>
-                      </div>
-                    )
-                  })}
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-      )}
 
       {/* Recently finished matches live on the "ניחושים" tab — keep the
           dashboard focused on what still needs action. */}
