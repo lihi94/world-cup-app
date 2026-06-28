@@ -1,8 +1,11 @@
 import { Link } from 'react-router-dom'
 import { useLeaderboard } from '../../hooks/useLeaderboard'
+import { useRankTrajectory } from '../../hooks/useRankTrajectory'
 import { useAuth } from '../../hooks/useAuth'
 import Spinner from '../../components/common/Spinner'
 import Hero from '../../components/common/Hero'
+import MatchSection from '../../components/common/MatchSection'
+import RankTrajectoryChart from './RankTrajectoryChart'
 import { displayName } from '../../types'
 
 const MEDALS = ['🥇', '🥈', '🥉']
@@ -10,6 +13,7 @@ const MEDALS = ['🥇', '🥈', '🥉']
 export default function LeaderboardPage() {
   const { profiles, stats, loading } = useLeaderboard()
   const { user } = useAuth()
+  const trajectory = useRankTrajectory(user?.id)
 
   if (loading) {
     return <div className="flex justify-center items-center min-h-screen"><Spinner size="lg" /></div>
@@ -161,6 +165,25 @@ export default function LeaderboardPage() {
           )}
         </div>
       </div>
+
+      {/* Rank trajectory */}
+      {!trajectory.loading && trajectory.players.length > 0 && (
+        <MatchSection
+          title="מגמת דירוג"
+          icon="📈"
+          subtitle={`${trajectory.labels.length} משחקים שהסתיימו`}
+          accent="cyan"
+          delay="0.35s"
+        >
+          <div className="glass-card rounded-2xl p-4">
+            <RankTrajectoryChart
+              labels={trajectory.labels}
+              players={trajectory.players}
+              maxRank={trajectory.maxRank}
+            />
+          </div>
+        </MatchSection>
+      )}
 
       {/* Legend */}
       <div className="glass-card rounded-xl px-3 py-2.5 flex items-center justify-around text-[10px] text-gray-400 animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
