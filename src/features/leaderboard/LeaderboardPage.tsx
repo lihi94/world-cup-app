@@ -167,23 +167,30 @@ export default function LeaderboardPage() {
       </div>
 
       {/* Rank trajectory */}
-      {!trajectory.loading && trajectory.players.length > 0 && (
-        <MatchSection
-          title="מגמת דירוג"
-          icon="📈"
-          subtitle={`${trajectory.labels.length} משחקים שהסתיימו`}
-          accent="cyan"
-          delay="0.35s"
-        >
-          <div className="glass-card rounded-2xl p-4">
+      <MatchSection
+        title="מגמת דירוג"
+        icon="📈"
+        subtitle={trajectory.labels.length > 0 ? `${trajectory.labels.length} משחקים שהסתיימו` : undefined}
+        accent="cyan"
+        defaultOpen
+        delay="0.35s"
+      >
+        <div className="glass-card rounded-2xl p-4">
+          {trajectory.loading ? (
+            <div className="flex justify-center py-6"><Spinner size="md" /></div>
+          ) : trajectory.error ? (
+            <p className="text-xs text-red-400 text-center py-4">שגיאה בטעינת הגרף: {trajectory.error}</p>
+          ) : trajectory.players.length === 0 ? (
+            <p className="text-xs text-gray-500 text-center py-4">אין עדיין מספיק משחקים שהסתיימו להצגת מגמה</p>
+          ) : (
             <RankTrajectoryChart
               labels={trajectory.labels}
               players={trajectory.players}
               maxRank={trajectory.maxRank}
             />
-          </div>
-        </MatchSection>
-      )}
+          )}
+        </div>
+      </MatchSection>
 
       {/* Legend */}
       <div className="glass-card rounded-xl px-3 py-2.5 flex items-center justify-around text-[10px] text-gray-400 animate-fade-in-up" style={{ animationDelay: '0.4s' }}>

@@ -18,6 +18,7 @@ export interface RankTrajectory {
   players: TrajectoryPlayer[]
   maxRank: number
   loading: boolean
+  error: string | null
 }
 
 /**
@@ -31,6 +32,7 @@ export function useRankTrajectory(myUserId?: string | null): RankTrajectory {
   const [labels, setLabels] = useState<string[]>([])
   const [players, setPlayers] = useState<TrajectoryPlayer[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     load()
@@ -38,8 +40,10 @@ export function useRankTrajectory(myUserId?: string | null): RankTrajectory {
 
   async function load() {
     setLoading(true)
+    setError(null)
+    try {
 
-    const [{ data: profiles }, { data: matches }] = await Promise.all([
+    const [{ data: profiles, error: profilesErr }, { data: matches, error: matchesErr }] = await Promise.all([
       supabase.from('profiles').select('id, username, nickname, avatar, is_bot').eq('is_bot', false),
       supabase
         .from('matches')
@@ -48,6 +52,8 @@ export function useRankTrajectory(myUserId?: string | null): RankTrajectory {
         .neq('stage', 'FRIENDLY')
         .order('start_time', { ascending: true }),
     ])
+    if (profilesErr) throw profilesErr
+    if (matchesErr) throw matchesErr
 
     const ms = matches ?? []
     const ps = (profiles ?? []) as Profile[]
@@ -59,10 +65,11 @@ export function useRankTrajectory(myUserId?: string | null): RankTrajectory {
     }
 
     const matchIds = ms.map(m => m.id)
-    const { data: preds } = await supabase
+    const { data: preds, error: predsErr } = await supabase
       .from('predictions')
       .select('user_id, match_id, points_earned')
       .in('match_id', matchIds)
+    if (predsErr) throw predsErr
 
     const N = ms.length
     const seqOf = new Map(ms.map((m, i) => [m.id, i]))
@@ -110,8 +117,13 @@ export function useRankTrajectory(myUserId?: string | null): RankTrajectory {
 
     setLabels(lbls)
     setPlayers(playerList)
-    setLoading(false)
+    } catch (e) {
+      console.error('useRankTrajectory failed:', e)
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setLoading(false)
+    }
   }
 
-  return { labels, players, maxRank: players.length, loading }
+  return { labels, players, maxRank: players.length, loading, error }
 }
