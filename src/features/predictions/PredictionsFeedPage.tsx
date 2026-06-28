@@ -100,7 +100,7 @@ export default function PredictionsFeedPage() {
   // Sections come back in tournament order: A→L, then R32→Final.
   // Finished tab collapses the whole group stage into one "בתים" folder.
   const sections = useMemo(
-    () => groupMatchesIntoSections(matches, { collapseGroups: tab === 'finished' }),
+    () => groupMatchesIntoSections(matches, { collapseGroups: tab === 'finished', collapseKnockout: tab === 'finished' }),
     [matches, tab]
   )
 

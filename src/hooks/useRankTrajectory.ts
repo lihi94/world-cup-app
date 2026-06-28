@@ -36,6 +36,16 @@ export function useRankTrajectory(myUserId?: string | null): RankTrajectory {
 
   useEffect(() => {
     load()
+
+    // Re-fetch whenever a profile's total_points changes (scoring just ran)
+    // so the chart never goes stale while the page stays open between
+    // 5-minute fetch-results ticks.
+    const channel = supabase
+      .channel('rank-trajectory-profiles')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, () => load())
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
   }, [])
 
   async function load() {

@@ -36,14 +36,19 @@ const KNOCKOUT_ICONS: Record<string, string> = {
  * When `collapseGroups` is set, ALL group-stage matches collapse into a single
  * "בתים" section instead of one per group letter — used by the finished tab so
  * the long A→L list folds into one folder.
+ *
+ * When `collapseKnockout` is set, ALL knockout matches (R32→FINAL) collapse
+ * into a single "נוקאאוט" section instead of one per round — same idea,
+ * applied to the finished tab's knockout rounds.
  */
 export function groupMatchesIntoSections(
   matches: Match[],
-  options: { collapseGroups?: boolean } = {}
+  options: { collapseGroups?: boolean; collapseKnockout?: boolean } = {}
 ): MatchSectionData[] {
   const friendlyBucket: Match[] = []
   const groupBuckets = new Map<string, Match[]>()  // key = group letter
   const allGroupBucket: Match[] = []               // used when collapseGroups
+  const allKnockoutBucket: Match[] = []            // used when collapseKnockout
   const stageBuckets = new Map<MatchStage, Match[]>()
 
   for (const m of matches) {
@@ -59,6 +64,8 @@ export function groupMatchesIntoSections(
         arr.push(m)
         groupBuckets.set(g, arr)
       }
+    } else if (options.collapseKnockout) {
+      allKnockoutBucket.push(m)
     } else {
       const arr = stageBuckets.get(m.stage) ?? []
       arr.push(m)
@@ -103,6 +110,17 @@ export function groupMatchesIntoSections(
       icon: '🏟️',
       accent: 'emerald',
       matches: groupBuckets.get(g)!,
+    })
+  }
+
+  // Collapsed mode: a single "נוקאאוט" folder for every knockout round.
+  if (options.collapseKnockout && allKnockoutBucket.length) {
+    sections.push({
+      key: 'knockout_all',
+      title: 'נוקאאוט',
+      icon: '🏆',
+      accent: 'purple',
+      matches: allKnockoutBucket,
     })
   }
 
