@@ -93,12 +93,23 @@ export function useRankTrajectory(myUserId?: string | null): RankTrajectory {
       return
     }
 
+    // A full tournament has 1600+ scored predictions (104 matches × ~20
+    // players), well past Supabase's default 1000-row cap per request — a
+    // plain .in() query silently truncated the result, undercounting
+    // everyone's cumulative points. Page through in chunks of 1000 instead.
     const matchIds = ms.map(m => m.id)
-    const { data: preds, error: predsErr } = await supabase
-      .from('predictions')
-      .select('user_id, match_id, points_earned')
-      .in('match_id', matchIds)
-    if (predsErr) throw predsErr
+    const preds: { user_id: string; match_id: string; points_earned: number }[] = []
+    const PAGE = 1000
+    for (let from = 0; ; from += PAGE) {
+      const { data: page, error: predsErr } = await supabase
+        .from('predictions')
+        .select('user_id, match_id, points_earned')
+        .in('match_id', matchIds)
+        .range(from, from + PAGE - 1)
+      if (predsErr) throw predsErr
+      preds.push(...(page ?? []))
+      if (!page || page.length < PAGE) break
+    }
 
     const N = ms.length
     const seqOf = new Map(ms.map((m, i) => [m.id, i]))
