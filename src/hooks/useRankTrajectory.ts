@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../services/supabase'
-import { displayName, type Profile } from '../types'
+import { displayName, type Profile, type LeaderboardStats } from '../types'
 
 export interface TrajectoryPlayer {
   id: string
@@ -64,7 +64,7 @@ export function useRankTrajectory(myUserId?: string | null): RankTrajectory {
     setError(null)
     try {
 
-    const [{ data: profiles, error: profilesErr }, { data: matches, error: matchesErr }] = await Promise.all([
+    const [{ data: profiles, error: profilesErr }, { data: matches, error: matchesErr }, { data: statsData, error: statsErr }] = await Promise.all([
       supabase.from('profiles').select('id, username, nickname, avatar, is_bot').eq('is_bot', false),
       supabase
         .from('matches')
@@ -72,9 +72,17 @@ export function useRankTrajectory(myUserId?: string | null): RankTrajectory {
         .eq('status', 'FINISHED')
         .neq('stage', 'FRIENDLY')
         .order('start_time', { ascending: true }),
+      supabase.rpc('get_leaderboard_stats'),
     ])
     if (profilesErr) throw profilesErr
     if (matchesErr) throw matchesErr
+    if (statsErr) throw statsErr
+
+    // Same tiebreak the real leaderboard uses (more exact predictions wins),
+    // so a tie in cumulative points never produces a different order/rank
+    // here than what the leaderboard table actually shows right now.
+    const statsByUser = new Map<string, LeaderboardStats>()
+    for (const s of (statsData ?? []) as LeaderboardStats[]) statsByUser.set(s.user_id, s)
 
     const ms = matches ?? []
     const ps = (profiles ?? []) as Profile[]
@@ -107,18 +115,29 @@ export function useRankTrajectory(myUserId?: string | null): RankTrajectory {
       for (let i = 1; i < N; i++) arr[i] += arr[i - 1]
     }
 
-    // Rank per checkpoint (standard competition ranking — ties share rank).
+    // Same tiebreak as the leaderboard table: points DESC, exact_count DESC,
+    // direction_count DESC, username ASC. This always yields a unique
+    // sequential rank (1, 2, 3, ...) — the leaderboard never shares a rank
+    // between tied players, so the chart shouldn't either.
+    function compare(aId: string, bId: string, cumA: number, cumB: number) {
+      if (cumB !== cumA) return cumB - cumA
+      const sA = statsByUser.get(aId), sB = statsByUser.get(bId)
+      const exA = sA?.exact_count ?? 0, exB = sB?.exact_count ?? 0
+      if (exB !== exA) return exB - exA
+      const dirA = sA?.direction_count ?? 0, dirB = sB?.direction_count ?? 0
+      if (dirB !== dirA) return dirB - dirA
+      const pA = ps.find(p => p.id === aId)!, pB = ps.find(p => p.id === bId)!
+      return pA.username.localeCompare(pB.username)
+    }
+
+    // Rank per checkpoint.
     const ranksByUser = new Map<string, number[]>()
     for (const p of ps) ranksByUser.set(p.id, new Array(N).fill(0))
     for (let i = 0; i < N; i++) {
       const sorted = ps
         .map(p => ({ id: p.id, cum: cumByUser.get(p.id)![i] }))
-        .sort((a, b) => b.cum - a.cum)
-      let rank = 1
-      for (let j = 0; j < sorted.length; j++) {
-        if (j > 0 && sorted[j].cum !== sorted[j - 1].cum) rank = j + 1
-        ranksByUser.get(sorted[j].id)![i] = rank
-      }
+        .sort((a, b) => compare(a.id, b.id, a.cum, b.cum))
+      sorted.forEach((s, j) => { ranksByUser.get(s.id)![i] = j + 1 })
     }
 
     const lbls = ms.map(m =>
@@ -134,7 +153,7 @@ export function useRankTrajectory(myUserId?: string | null): RankTrajectory {
         finalPoints: cumByUser.get(p.id)![N - 1],
         ranks: ranksByUser.get(p.id)!,
       }))
-      .sort((a, b) => b.finalPoints - a.finalPoints)
+      .sort((a, b) => compare(a.id, b.id, a.finalPoints, b.finalPoints))
 
     setLabels(lbls)
     setPlayers(playerList)
