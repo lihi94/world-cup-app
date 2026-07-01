@@ -68,13 +68,24 @@ export default function PredictionsFeedPage() {
 
     if (ms.length > 0) {
       const ids = ms.map(m => m.id)
-      const { data: preds } = await supabase
-        .from('predictions')
-        .select('*, profiles(username, nickname, total_points, is_bot, avatar)')
-        .in('match_id', ids)
+      // Supabase caps a single request at 1000 rows. The finished tab alone
+      // already has 1800+ prediction rows (71 matches × ~21 players), so an
+      // unpaginated .in() silently truncated some matches to zero predictions
+      // — page through in chunks of 1000 until a short page signals the end.
+      const preds: PredictionWithProfile[] = []
+      const PAGE = 1000
+      for (let from = 0; ; from += PAGE) {
+        const { data: page } = await supabase
+          .from('predictions')
+          .select('*, profiles(username, nickname, total_points, is_bot, avatar)')
+          .in('match_id', ids)
+          .range(from, from + PAGE - 1)
+        preds.push(...((page ?? []) as PredictionWithProfile[]))
+        if (!page || page.length < PAGE) break
+      }
 
       const grouped = new Map<string, PredictionWithProfile[]>()
-      for (const p of preds ?? []) {
+      for (const p of preds) {
         const arr = grouped.get(p.match_id) ?? []
         arr.push(p as PredictionWithProfile)
         grouped.set(p.match_id, arr)

@@ -49,6 +49,17 @@
 // never overwrite an already-set team side — so a side filled by ESPN (or by
 // football-data first) can't later be flipped, which would misattribute
 // predictions already placed on that knockout match.
+//
+// Name-matcher false positives (v21/v22, found by user report "ספרד אוסטריה"):
+// namesOverlap truncated both names to their first 5 chars before comparing,
+// so "Austria" and "Australia" (both start "austr") counted as the same team
+// — the Spain–Austria R32 match got backfilled with Australia instead (v21
+// switched to full-prefix containment, no truncation). v22 then closed a
+// second latent collision found while auditing: "South Africa" vs "South
+// Korea" still matched on the shared generic token "south", so a small
+// stoplist (south/republic/united) now excludes generic qualifier tokens and
+// an exact-match fast path covers names whose only token is generic. Both bad
+// matchups were checked against ESPN and the DB rows repaired by hand.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -86,12 +97,28 @@ const KNOCKOUT_STAGES = ['R32', 'R16', 'QF', 'SF', 'THIRD', 'FINAL']
 // "Korea Republic" vs "South Korea", "Czech Republic" vs "Czechia", or
 // "Cape Verde" vs "Cape Verde Islands". Used by both the ESPN live-score
 // block and the ESPN knockout team-name backfill (block 2.6).
+//
+// Generic qualifier tokens that several different teams share ("South Africa"
+// vs "South Korea"; "Korea Republic" / "Czech Republic"). Matching on one of
+// these alone must NOT count as the same team — only a DISTINCTIVE token
+// (africa/korea/czech/states/...) does. Kept minimal: every other token in the
+// 48-team roster is distinctive, so a broader list risks emptying a team's
+// token set (verified against the full teams table). (v22)
+const GENERIC_TOKENS = new Set(['south', 'republic', 'united'])
 const nameTokens = (s: string) =>
   s.toLowerCase().replace(/[^a-z ]/g, '').split(/\s+/).filter(w => w.length >= 4)
 const namesOverlap = (x?: string, y?: string) => {
   if (!x || !y) return false
-  const tx = nameTokens(x), ty = nameTokens(y)
-  return tx.some(a => ty.some(b => a.startsWith(b.slice(0, 5)) || b.startsWith(a.slice(0, 5))))
+  // Exact (case-insensitive) match always wins — needed for teams whose only
+  // tokens are generic ("United States" == "United States").
+  if (x.trim().toLowerCase() === y.trim().toLowerCase()) return true
+  // Otherwise require an overlap on a DISTINCTIVE (non-generic) token, by full
+  // prefix containment (no truncation). This rejects two false positives that
+  // bit us: "Austria"/"Australia" (no prefix containment) and "South Africa"/
+  // "South Korea" (overlap only on the generic "south"). (v22)
+  const tx = nameTokens(x).filter(w => !GENERIC_TOKENS.has(w))
+  const ty = nameTokens(y).filter(w => !GENERIC_TOKENS.has(w))
+  return tx.some(a => ty.some(b => a.startsWith(b) || b.startsWith(a)))
 }
 
 Deno.serve(async () => {
