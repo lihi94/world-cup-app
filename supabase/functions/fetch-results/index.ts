@@ -60,6 +60,23 @@
 // stoplist (south/republic/united) now excludes generic qualifier tokens and
 // an exact-match fast path covers names whose only token is generic. Both bad
 // matchups were checked against ESPN and the DB rows repaired by hand.
+//
+// Extra-time score + stuck winner_id (v23, found by user report "בלגיה...לפי
+// 120 דקות לא 90"): this competition's free-tier football-data feed never
+// populates score.regularTime for a match that went to extra time — the old
+// duration-gated logic either left such a match unscored forever, or, when
+// score.duration read transiently "REGULAR" before ET data settled, froze in
+// the WRONG full-120'/AET score permanently (Belgium 3–2(AET) Senegal stored
+// as 3–2 instead of the real 90' score 2–2). Now derives 90' score as
+// fullTime − extraTime (extraTime is only ever present when ET happened, so
+// ?? 0 is safe for a regulation-only match) — verified against all 9 finished
+// R32 matches, matches ESPN exactly. Separately, winner_id used to be frozen
+// together with the score, so a penalty-shootout match whose ESPN read landed
+// on a tied score before its own winner flag caught up got winner_id stuck
+// null forever (Germany–Paraguay, Netherlands–Morocco — score was correct,
+// winner_id wasn't). winner_id is no longer frozen; it can always be filled
+// or corrected from football-data's independent score.winner field, but is
+// never downgraded back to null once set.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -306,12 +323,21 @@ Deno.serve(async () => {
       const mappedStatus = STATUS_MAP[m.status] ?? 'SCHEDULED'
       const mappedStage = STAGE_MAP[m.stage] ?? 'GROUP'
 
-      // score_a/score_b hold the 90-minute score only. When a knockout match
-      // went to extra time / penalties, football-data's fullTime includes ET
-      // goals — regularTime is the true 90' score.
-      const went90Only = (m.score?.duration ?? 'REGULAR') === 'REGULAR'
-      const score90Home = went90Only ? m.score?.fullTime?.home : m.score?.regularTime?.home
-      const score90Away = went90Only ? m.score?.fullTime?.away : m.score?.regularTime?.away
+      // score_a/score_b hold the 90-minute score only. football-data's fullTime
+      // always includes extra-time goals; a match that went to ET reports them
+      // separately under score.extraTime (present only when ET happened — a
+      // regulation-only match has no extraTime key at all, so ?? 0 is safe).
+      // 90' score = fullTime − extraTime. This is deliberately NOT based on
+      // score.duration / score.regularTime: this competition's free-tier feed
+      // never populates regularTime for extra-time matches (confirmed null on
+      // Belgium 3–2(AET) Senegal, whose real 90' score was 2–2) — the old
+      // duration-gated logic either left such matches stuck unscored forever,
+      // or, when duration read transiently as "REGULAR" before ET data settled,
+      // froze in the wrong AET score permanently (exactly what happened here).
+      const extraHome = m.score?.extraTime?.home ?? 0
+      const extraAway = m.score?.extraTime?.away ?? 0
+      const score90Home = m.score?.fullTime?.home != null ? m.score.fullTime.home - extraHome : null
+      const score90Away = m.score?.fullTime?.away != null ? m.score.fullTime.away - extraAway : null
 
       // Free-tier API lag: status can flip to FINISHED while fullTime is still
       // null (happened on the 2026 opener). Skip until scores are published.
@@ -381,12 +407,21 @@ Deno.serve(async () => {
       // sometimes counts a goal that was later cancelled by VAR (Spain showed
       // 5-0 vs the real 4-0). ESPN sets the authoritative final first; don't let
       // a late football-data tick overwrite it. A NULL score is still allowed to
-      // fill — that's the knockout-ET path waiting for regularTime.
+      // fill — that's the knockout-ET path waiting for the score to appear.
+      // winner_id is deliberately NOT frozen here (see guard below) — the score
+      // freeze exists to stop a VAR-flip-flop, but a penalty-shootout match can
+      // get its winner_id wrongly frozen at null: ESPN sometimes marks the match
+      // FINISHED with a tied score before its own competitor.winner flag catches
+      // up with the shootout result, and the code's draw-fallback (score tied ⇒
+      // no winner) locks that null in before football-data's independent
+      // score.winner field ever gets a chance (hit live: Germany–Paraguay,
+      // Netherlands–Morocco — score correct, winner_id stuck null).
       if (existing.status === 'FINISHED' && existing.score_a !== null) {
         delete payload.score_a
         delete payload.score_b
-        delete payload.winner_id
       }
+      // Never let a knockout winner regress to null — only fill/correct it.
+      if (payload.winner_id === null && existing.winner_id) delete payload.winner_id
 
       await supabase
         .from('matches')
