@@ -61,16 +61,21 @@
 // an exact-match fast path covers names whose only token is generic. Both bad
 // matchups were checked against ESPN and the DB rows repaired by hand.
 //
-// Extra-time score + stuck winner_id (v23, found by user report "בלגיה...לפי
-// 120 דקות לא 90"): this competition's free-tier football-data feed never
-// populates score.regularTime for a match that went to extra time — the old
-// duration-gated logic either left such a match unscored forever, or, when
-// score.duration read transiently "REGULAR" before ET data settled, froze in
-// the WRONG full-120'/AET score permanently (Belgium 3–2(AET) Senegal stored
-// as 3–2 instead of the real 90' score 2–2). Now derives 90' score as
-// fullTime − extraTime (extraTime is only ever present when ET happened, so
-// ?? 0 is safe for a regulation-only match) — verified against all 9 finished
-// R32 matches, matches ESPN exactly. Separately, winner_id used to be frozen
+// Extra-time score + stuck winner_id (v23/v24, found by user report "בלגיה...
+// לפי 120 דקות לא 90"): this competition's free-tier football-data feed
+// leaves score.regularTime null for a match decided in extra time (no
+// penalties) — the old duration-gated logic either left such a match
+// unscored forever, or froze the WRONG full-120'/AET score permanently when
+// duration read transiently "REGULAR" before ET data settled (Belgium
+// 3–2(AET) Senegal stored as 3–2 instead of the real 90' score 2–2). v23
+// derived 90' score as fullTime − extraTime whenever regularTime was null.
+// v24 fix: PREFER regularTime whenever football-data actually supplies it
+// (reliable for PENALTY_SHOOTOUT-duration matches) and only fall back to
+// fullTime − extraTime when regularTime is null — v23's unconditional
+// fullTime−extraTime broke Australia–Egypt, a penalty-shootout match whose
+// fullTime was a garbage value ({3,5}, not derivable from real goals) while
+// regularTime ({1,1}) sat right there as the correct answer. Verified against
+// all 16 finished R32 matches. Separately, winner_id used to be frozen
 // together with the score, so a penalty-shootout match whose ESPN read landed
 // on a tied score before its own winner flag caught up got winner_id stuck
 // null forever (Germany–Paraguay, Netherlands–Morocco — score was correct,
@@ -323,21 +328,27 @@ Deno.serve(async () => {
       const mappedStatus = STATUS_MAP[m.status] ?? 'SCHEDULED'
       const mappedStage = STAGE_MAP[m.stage] ?? 'GROUP'
 
-      // score_a/score_b hold the 90-minute score only. football-data's fullTime
-      // always includes extra-time goals; a match that went to ET reports them
-      // separately under score.extraTime (present only when ET happened — a
-      // regulation-only match has no extraTime key at all, so ?? 0 is safe).
-      // 90' score = fullTime − extraTime. This is deliberately NOT based on
-      // score.duration / score.regularTime: this competition's free-tier feed
-      // never populates regularTime for extra-time matches (confirmed null on
-      // Belgium 3–2(AET) Senegal, whose real 90' score was 2–2) — the old
-      // duration-gated logic either left such matches stuck unscored forever,
-      // or, when duration read transiently as "REGULAR" before ET data settled,
-      // froze in the wrong AET score permanently (exactly what happened here).
+      // score_a/score_b hold the 90-minute score only.
+      //
+      // Prefer score.regularTime whenever football-data actually gives it —
+      // confirmed reliable for PENALTY_SHOOTOUT-duration matches. Only fall
+      // back to fullTime − extraTime when regularTime is null, which this
+      // competition's free-tier feed does for EXTRA_TIME-duration matches
+      // (Belgium 3–2(AET) Senegal: regularTime null, fullTime−extraTime =
+      // 2–2, correct). v23 used fullTime−extraTime unconditionally, which
+      // broke Australia–Egypt: a PENALTY_SHOOTOUT match where fullTime was a
+      // garbage value ({home:3,away:5}, not derivable from real goals) while
+      // regularTime ({1,1}) was the actual correct 90' score sitting right
+      // there — always prefer it when present instead of re-deriving.
+      const hasRegularTime = m.score?.regularTime?.home != null && m.score?.regularTime?.away != null
       const extraHome = m.score?.extraTime?.home ?? 0
       const extraAway = m.score?.extraTime?.away ?? 0
-      const score90Home = m.score?.fullTime?.home != null ? m.score.fullTime.home - extraHome : null
-      const score90Away = m.score?.fullTime?.away != null ? m.score.fullTime.away - extraAway : null
+      const score90Home = hasRegularTime
+        ? m.score.regularTime.home
+        : (m.score?.fullTime?.home != null ? m.score.fullTime.home - extraHome : null)
+      const score90Away = hasRegularTime
+        ? m.score.regularTime.away
+        : (m.score?.fullTime?.away != null ? m.score.fullTime.away - extraAway : null)
 
       // Free-tier API lag: status can flip to FINISHED while fullTime is still
       // null (happened on the 2026 opener). Skip until scores are published.
