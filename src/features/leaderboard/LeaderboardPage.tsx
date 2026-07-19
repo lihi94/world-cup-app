@@ -1,11 +1,14 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useLeaderboard } from '../../hooks/useLeaderboard'
 import { useRankTrajectory } from '../../hooks/useRankTrajectory'
+import { useTournamentDone } from '../../hooks/useTournamentDone'
 import { useAuth } from '../../hooks/useAuth'
 import Spinner from '../../components/common/Spinner'
 import Hero from '../../components/common/Hero'
 import MatchSection from '../../components/common/MatchSection'
 import RankTrajectoryChart from './RankTrajectoryChart'
+import ChampionsReveal from './ChampionsReveal'
 import { displayName } from '../../types'
 
 const MEDALS = ['🥇', '🥈', '🥉']
@@ -14,6 +17,16 @@ export default function LeaderboardPage() {
   const { profiles, stats, loading } = useLeaderboard()
   const { user } = useAuth()
   const trajectory = useRankTrajectory(user?.id)
+  const tournamentDone = useTournamentDone()
+
+  // Auto-play the champions reveal once per device when the tournament ends;
+  // a replay button re-opens it afterwards (e.g. after golden bets are scored).
+  const [showReveal, setShowReveal] = useState(false)
+  useEffect(() => {
+    if (tournamentDone && profiles.length >= 5 && !localStorage.getItem('champions_seen')) {
+      setShowReveal(true)
+    }
+  }, [tournamentDone, profiles.length])
 
   if (loading) {
     return <div className="flex justify-center items-center min-h-screen"><Spinner size="lg" /></div>
@@ -23,6 +36,28 @@ export default function LeaderboardPage() {
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-5 pb-24 space-y-5">
+
+      {/* End-of-tournament grand reveal (top 5) */}
+      {showReveal && (
+        <ChampionsReveal
+          top5={profiles.slice(0, 5)}
+          myId={user?.id}
+          onClose={() => {
+            localStorage.setItem('champions_seen', '1')
+            setShowReveal(false)
+          }}
+        />
+      )}
+
+      {/* Replay reveal — only once the tournament is over */}
+      {tournamentDone && profiles.length >= 5 && !showReveal && (
+        <button
+          onClick={() => setShowReveal(true)}
+          className="w-full glass-card rounded-2xl py-3 flex items-center justify-center gap-2 text-sm font-black text-amber-300 border border-amber-400/30 animate-fade-in-up active:scale-[0.98] transition"
+        >
+          <span className="text-lg">🏆</span> טקס הסיום — הצג שוב
+        </button>
+      )}
 
       {/* Hero */}
       <Hero image="trophy" overlay="amber" height="md">

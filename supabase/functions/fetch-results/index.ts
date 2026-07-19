@@ -61,9 +61,9 @@
 // an exact-match fast path covers names whose only token is generic. Both bad
 // matchups were checked against ESPN and the DB rows repaired by hand.
 //
-// Extra-time score + stuck winner_id (v23/v24, found by user report "בלגיה...
-// לפי 120 דקות לא 90"): this competition's free-tier football-data feed
-// leaves score.regularTime null for a match decided in extra time (no
+// Extra-time score + stuck winner_id (v23/v24/v25, found by user report
+// "בלגיה...לפי 120 דקות לא 90"): this competition's free-tier football-data
+// feed leaves score.regularTime null for a match decided in extra time (no
 // penalties) — the old duration-gated logic either left such a match
 // unscored forever, or froze the WRONG full-120'/AET score permanently when
 // duration read transiently "REGULAR" before ET data settled (Belgium
@@ -74,14 +74,21 @@
 // fullTime − extraTime when regularTime is null — v23's unconditional
 // fullTime−extraTime broke Australia–Egypt, a penalty-shootout match whose
 // fullTime was a garbage value ({3,5}, not derivable from real goals) while
-// regularTime ({1,1}) sat right there as the correct answer. Verified against
-// all 16 finished R32 matches. Separately, winner_id used to be frozen
-// together with the score, so a penalty-shootout match whose ESPN read landed
-// on a tied score before its own winner flag caught up got winner_id stuck
-// null forever (Germany–Paraguay, Netherlands–Morocco — score was correct,
-// winner_id wasn't). winner_id is no longer frozen; it can always be filled
-// or corrected from football-data's independent score.winner field, but is
-// never downgraded back to null once set.
+// regularTime ({1,1}) sat right there as the correct answer. Separately,
+// winner_id used to be frozen together with the score, so a penalty-shootout
+// match whose ESPN read landed on a tied score before its own winner flag
+// caught up got winner_id stuck null forever (Germany–Paraguay, Netherlands–
+// Morocco — score was correct, winner_id wasn't). v24 added a guard so
+// winner_id can always be filled/corrected but never downgraded to null —
+// BUT the guard read `existing.winner_id`, a field v24 forgot to include in
+// the `existing` SELECT, so it was always `undefined` (falsy) and the guard
+// silently never fired: every tick kept overwriting a correctly-set winner_id
+// back to null (caught live on Australia–Egypt within minutes of v24 going
+// out — the DB fix held for one tick, then reverted). v25 adds `winner_id`
+// to the SELECT so the guard actually has real data to protect. Re-verified
+// against all 16 finished R32 matches after the fix, including re-checking
+// on a SECOND tick a few minutes later to confirm winner_id actually holds
+// this time (the exact way v24's bug went undetected the first time).
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -384,7 +391,7 @@ Deno.serve(async () => {
 
       const { data: existing } = await supabase
         .from('matches')
-        .select('status, external_id, score_a, score_b, stage, team_a_id, team_b_id')
+        .select('status, external_id, score_a, score_b, stage, team_a_id, team_b_id, winner_id')
         .eq('external_id', m.id)
         .maybeSingle()
 
