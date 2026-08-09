@@ -88,9 +88,25 @@ Design choices worth defending in an interview:
 - **Citations are verifiable by construction.** Because citations are chunk ids from the provided context, "did it cite something it never saw?" and "does the cited chunk contain the evidence?" are string operations, not judgment calls.
 - **Deterministic before model-graded.** Every metric that *can* be computed without an LLM is; the LLM judge is reserved for the one thing string matching can't do (claim-level grounding).
 
+## Web demo
+
+`web/` is a React + Vite front end for the pipeline, and `api/ask.ts` is a Vercel serverless function that runs the grounded-answer step server-side (the key never reaches the browser).
+
+- **Ask tab** — question box + sample chips (including ⚠-marked refusal traps). Answers render their `[cNNN]` citations as clickable chips that scroll to and highlight the exact retrieved passage. The retrieved-passages panel shows what the model was allowed to read, with BM25 scores and cited-passage highlighting.
+- **Evals tab** — runs the deterministic retrieval eval *live in the browser* (same index, same graders as the CLI) and renders the full 36-case table.
+- **Graceful degradation** — with no backend or no API key, the UI drops to retrieval-only mode and says so, instead of breaking.
+
+```bash
+npm run web          # local dev (retrieval-only unless you also run the API)
+npm run web:build    # production build -> dist/
+```
+
+**Deploy to Vercel:** create a project with root directory `equity-rag/` (the included `vercel.json` sets the build command and output dir; the `api/` function is auto-detected) and set `ANTHROPIC_API_KEY` in the project's environment variables. That's the whole deployment.
+
+CI (`.github/workflows/equity-rag-ci.yml`) runs typecheck, unit tests, the offline retrieval eval (failing the build if evidence recall drops below 100%), and the web build on every push touching `equity-rag/`.
+
 ## Roadmap
 
-- Web UI (React + Vite, matching the host repo's stack) deployed on Vercel, with an API route holding the Anthropic key
 - Hybrid retrieval (embeddings + BM25 + reciprocal-rank fusion) — measured against the same suite
 - Multi-filing corpora (10-K + 10-Qs) with time-aware questions ("how did gross margin trend?")
 - TASE / Maya (Hebrew) filings — same pipeline, Hebrew tokenization

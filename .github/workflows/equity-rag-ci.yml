@@ -1,0 +1,31 @@
+name: equity-rag CI
+
+on:
+  push:
+    paths: ["equity-rag/**", ".github/workflows/equity-rag-ci.yml"]
+  pull_request:
+    paths: ["equity-rag/**", ".github/workflows/equity-rag-ci.yml"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: equity-rag
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: equity-rag/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      # Deterministic offline stages: rebuild the corpus and require perfect
+      # evidence recall — a chunker/retriever regression fails the build.
+      - run: npm run build-fixture
+      - run: |
+          npm run eval | tee eval.out
+          grep -q "mean evidence recall@k:  100.0%" eval.out
+      - run: npm run web:build
