@@ -1,0 +1,77 @@
+{
+ "meta": {
+  "company": "Meridian Semiconductor Devices, Inc. (FICTIONAL — synthetic sample filing)",
+  "ticker": "MRSD",
+  "form": "10-K",
+  "fiscalYear": "2025",
+  "source": "fixtures/meridian-10k.html",
+  "synthetic": true
+ },
+ "chunks": [
+  {
+   "id": "c001",
+   "section": "Preamble",
+   "text": "SYNTHETIC SAMPLE FILING — FICTIONAL COMPANY (for demo and evaluation only)\nUNITED STATES SECURITIES AND EXCHANGE COMMISSION — FORM 10-K (SAMPLE)\nAnnual Report Pursuant to Section 13 or 15(d) of the Securities Exchange Act of 1934 for the fiscal year ended September 27, 2025.\nMERIDIAN SEMICONDUCTOR DEVICES, INC. (Exact name of registrant as specified in its charter). State of incorporation: Delaware. Principal executive offices: Austin, Texas. Common stock listed on the Nasdaq Global Select Market under the symbol \"MRSD\". As of November 14, 2025, there were 316.8 million shares of common stock outstanding."
+  },
+  {
+   "id": "c002",
+   "section": "Item 1. Business",
+   "text": "Item 1. Business\nMeridian Semiconductor Devices, Inc. (\"Meridian,\" the \"Company,\" \"we\") designs, develops and sells high-speed analog and mixed-signal semiconductors. The Company was founded in 2004, completed its initial public offering in 2014, and is headquartered in Austin, Texas. Our fiscal year is a 52- or 53-week period ending on the last Saturday of September. Fiscal 2025 was a 52-week year ended September 27, 2025.\nWe operate in three reportable segments:\nDatacenter Interconnect. Optical and electrical interconnect chipsets — including 800G and 1.6T DSP-based transceiver platforms — sold to cloud and hyperscale datacenter operators and to optical module manufacturers. Datacenter Interconnect generated net revenue of $2,748.4 million in fiscal 2025, an increase of 30.7% from $2,102.9 million in fiscal 2024, driven primarily by accelerated deployment of AI training and inference clusters by hyperscale customers.\nIndustrial Sensing. Precision signal-chain and sensor-interface products for factory automation, test and measurement, and medical imaging. Industrial Sensing net revenue was $1,391.0 million in fiscal 2025, up 2.8% from $1,352.7 million in fiscal 2024.\nAutomotive. Radar and battery-management interface products for advanced driver-assistance systems and electric vehicles. Automotive net revenue was $673.2 million in fiscal 2025, up 3.0% from $653.7 million in fiscal 2024."
+  },
+  {
+   "id": "c003",
+   "section": "Item 1. Business",
+   "text": "Automotive. Radar and battery-management interface products for advanced driver-assistance systems and electric vehicles. Automotive net revenue was $673.2 million in fiscal 2025, up 3.0% from $653.7 million in fiscal 2024.\nCustomers. Our largest customer, a leading hyperscale cloud provider, accounted for approximately 14% of net revenue in fiscal 2025. Our ten largest customers together accounted for approximately 61% of net revenue in fiscal 2025.\nBacklog. Our backlog of unfilled purchase orders was approximately $1.9 billion as of September 27, 2025, compared with approximately $1.4 billion as of September 28, 2024. Backlog is subject to cancellation and rescheduling and is not necessarily indicative of future revenue.\nManufacturing. We are a fabless semiconductor company. We outsource all wafer fabrication to third-party foundries, and a substantial majority of our wafers are manufactured by a single foundry partner located in Taiwan. Assembly and test are performed by subcontractors in Taiwan, Malaysia and the Philippines.\nHuman capital. As of September 27, 2025, we employed 11,240 people worldwide, of whom approximately 68% were in engineering functions."
+  },
+  {
+   "id": "c004",
+   "section": "Item 1A. Risk Factors",
+   "text": "Item 1A. Risk Factors\nCustomer concentration. A significant portion of our revenue is derived from a small number of customers. Our largest customer accounted for approximately 14% of net revenue in fiscal 2025, and our ten largest customers accounted for approximately 61%. The loss of, or a significant reduction in orders from, any large customer would materially and adversely affect our results of operations.\nDependence on a single foundry. Because a substantial majority of our wafers are manufactured by a single third-party foundry located in Taiwan, any disruption at that foundry — including natural disaster, geopolitical conflict affecting Taiwan, capacity constraints or yield problems — could materially limit our ability to supply products and would materially harm our revenue and customer relationships.\nExport controls and trade restrictions. Sales to customers in China, including Hong Kong, represented approximately 22% of net revenue in fiscal 2025. Expanded U.S. export control regulations covering high-performance interconnect semiconductors could restrict our ability to sell certain Datacenter Interconnect products into China, and further restrictions could materially reduce our revenue.\nDemand concentration in AI infrastructure. A substantial portion of the recent growth of our Datacenter Interconnect segment reflects capital spending by a small number of hyperscale operators on AI infrastructure. A slowdown or digestion period in AI-related capital expenditure would disproportionately affect our fastest-growing segment."
+  },
+  {
+   "id": "c005",
+   "section": "Item 1A. Risk Factors",
+   "text": "Demand concentration in AI infrastructure. A substantial portion of the recent growth of our Datacenter Interconnect segment reflects capital spending by a small number of hyperscale operators on AI infrastructure. A slowdown or digestion period in AI-related capital expenditure would disproportionately affect our fastest-growing segment.\nCybersecurity. We are regularly the target of attempted cyber intrusions seeking access to our proprietary design files. A successful intrusion could result in the theft of intellectual property that would erode our competitive position.\nLitigation. We are subject to intellectual-property litigation, including the Corvex Photonics matter described in Item 3, which could result in significant damages or license fees."
+  },
+  {
+   "id": "c006",
+   "section": "Item 3. Legal Proceedings",
+   "text": "Item 3. Legal Proceedings\nIn March 2025, Corvex Photonics Ltd. filed suit against the Company in the United States District Court for the Western District of Texas, alleging that certain of our 1.6T DSP products infringe three Corvex patents and seeking damages of at least $120 million. We believe the claims are without merit and are defending the matter vigorously. An estimate of possible loss cannot be made at this time."
+  },
+  {
+   "id": "c007",
+   "section": "Item 5. Market for Registrant's Common Equity",
+   "text": "Item 5. Market for Registrant's Common Equity\nDuring fiscal 2025, our Board of Directors declared a quarterly cash dividend of $0.22 per share in each quarter, and aggregate dividends paid were $280.1 million. Under our stock repurchase program, we repurchased 4.1 million shares of common stock for $350.0 million during fiscal 2025. As of September 27, 2025, $650.0 million remained available under the repurchase authorization."
+  },
+  {
+   "id": "c008",
+   "section": "Item 7. Management's Discussion and Analysis of Financial Condition and Results of Operations",
+   "text": "Item 7. Management's Discussion and Analysis of Financial Condition and Results of Operations\nOverview of fiscal 2025 results. Net revenue for fiscal 2025 was $4,812.6 million, an increase of 17.1% from $4,109.3 million in fiscal 2024. The increase was driven primarily by the Datacenter Interconnect segment, which grew 30.7% year over year on hyperscale AI infrastructure deployments, partially offset by modest growth in Industrial Sensing and Automotive.\nGross margin. Gross profit for fiscal 2025 was $2,735.6 million, or 56.8% of net revenue, compared with $2,301.2 million, or 56.0% of net revenue, in fiscal 2024. The 0.8 percentage point improvement reflected a richer mix of Datacenter Interconnect products and improved test yields, partially offset by higher substrate costs.\nResearch and development. R&D expense was $962.5 million in fiscal 2025, or 20.0% of net revenue, compared with $845.0 million, or 20.6% of net revenue, in fiscal 2024. The increase in absolute spend reflects tape-outs of our next-generation 3-nanometer DSP platform and increased headcount.\nSelling, general and administrative. SG&A expense was $486.1 million in fiscal 2025, compared with $393.6 million in fiscal 2024, reflecting higher variable compensation and litigation costs associated with the Corvex Photonics matter.\nOperating income. Operating income for fiscal 2025 was $1,287.0 million, or 26.7% of net revenue, compared with $1,062.6 million, or 25.9% of net revenue, in fiscal 2024."
+  },
+  {
+   "id": "c009",
+   "section": "Item 7. Management's Discussion and Analysis of Financial Condition and Results of Operations",
+   "text": "Selling, general and administrative. SG&A expense was $486.1 million in fiscal 2025, compared with $393.6 million in fiscal 2024, reflecting higher variable compensation and litigation costs associated with the Corvex Photonics matter.\nOperating income. Operating income for fiscal 2025 was $1,287.0 million, or 26.7% of net revenue, compared with $1,062.6 million, or 25.9% of net revenue, in fiscal 2024.\nInterest and taxes. Interest expense was $38.2 million in fiscal 2025. Interest and other income, net, was $21.4 million. The provision for income taxes was $190.5 million, representing an effective tax rate of 15.0%, compared with 14.4% in fiscal 2024. The increase in the effective rate was primarily due to a lower benefit from foreign-derived intangible income.\nNet income. Net income for fiscal 2025 was $1,079.7 million, or 22.4% of net revenue, compared with $887.2 million, or 21.6% of net revenue, in fiscal 2024. Diluted earnings per share were $3.35 in fiscal 2025, compared with $2.78 in fiscal 2024.\nLiquidity and capital resources. Cash generated by operating activities was $1,412.7 million in fiscal 2025. Purchases of property and equipment were $297.8 million. As of September 27, 2025, we held cash and cash equivalents of $1,624.8 million and short-term investments of $892.3 million. We believe our existing balances and operating cash flow will be sufficient to fund operations, capital expenditures, dividends and repurchases for at least the next twelve months."
+  },
+  {
+   "id": "c010",
+   "section": "Item 7. Management's Discussion and Analysis of Financial Condition and Results of Operations",
+   "text": "Liquidity and capital resources. Cash generated by operating activities was $1,412.7 million in fiscal 2025. Purchases of property and equipment were $297.8 million. As of September 27, 2025, we held cash and cash equivalents of $1,624.8 million and short-term investments of $892.3 million. We believe our existing balances and operating cash flow will be sufficient to fund operations, capital expenditures, dividends and repurchases for at least the next twelve months.\nGeographic revenue. Based on customer ship-to location, the United States represented approximately 38% of fiscal 2025 net revenue, China (including Hong Kong) approximately 22%, Taiwan approximately 14%, and all other regions approximately 26% in the aggregate."
+  },
+  {
+   "id": "c011",
+   "section": "Item 7A. Quantitative and Qualitative Disclosures About Market Risk",
+   "text": "Item 7A. Quantitative and Qualitative Disclosures About Market Risk\nOur fixed-rate senior notes are not exposed to interest-rate-driven changes in interest expense. A hypothetical 10% adverse movement in foreign exchange rates would not have had a material effect on fiscal 2025 results, as substantially all revenue is denominated in U.S. dollars."
+  },
+  {
+   "id": "c012",
+   "section": "Item 8. Financial Statements and Supplementary Data",
+   "text": "Item 8. Financial Statements and Supplementary Data\nCONSOLIDATED STATEMENTS OF INCOME (in millions, except per-share amounts)\nLine item | Fiscal 2025 | Fiscal 2024\nNet revenue | 4,812.6 | 4,109.3\nCost of revenue | 2,077.0 | 1,808.1\nGross profit | 2,735.6 | 2,301.2\nResearch and development | 962.5 | 845.0\nSelling, general and administrative | 486.1 | 393.6\nTotal operating expenses | 1,448.6 | 1,238.6\nOperating income | 1,287.0 | 1,062.6\nInterest expense | (38.2) | (39.0)\nInterest and other income, net | 21.4 | 12.8\nIncome before income taxes | 1,270.2 | 1,036.4\nProvision for income taxes | 190.5 | 149.2\nNet income | 1,079.7 | 887.2\nBasic earnings per share | 3.39 | 2.81\nDiluted earnings per share | 3.35 | 2.78\nBasic weighted-average shares | 318.1 | 315.4\nDiluted weighted-average shares | 322.4 | 319.5\nCONSOLIDATED BALANCE SHEETS — SELECTED DATA (in millions)\nLine item | September 27, 2025 | September 28, 2024\nCash and cash equivalents | 1,624.8 | 1,310.5\nShort-term investments | 892.3 | 760.4\nInventories | 613.9 | 587.2\nTotal assets | 7,842.5 | 6,988.1\nLong-term debt | 1,500.0 | 1,500.0\nTotal stockholders' equity | 4,610.2 | 3,987.6\nCONSOLIDATED STATEMENTS OF CASH FLOWS — SELECTED DATA (in millions)\nLine item | Fiscal 2025 | Fiscal 2024\nNet cash provided by operating activities | 1,412.7 | 1,188.3\nPurchases of property and equipment | (297.8) | (261.4)\nDividends paid | (280.1) | (268.9)\nRepurchases of common stock | (350.0) | (300.0)"
+  },
+  {
+   "id": "c013",
+   "section": "Item 8. Financial Statements and Supplementary Data",
+   "text": "Net cash provided by operating activities | 1,412.7 | 1,188.3\nPurchases of property and equipment | (297.8) | (261.4)\nDividends paid | (280.1) | (268.9)\nRepurchases of common stock | (350.0) | (300.0)\nNote 6 — Debt. Long-term debt consists of $600.0 million aggregate principal amount of 4.25% senior notes due 2028 and $900.0 million aggregate principal amount of 4.85% senior notes due 2031. The notes are unsecured and rank equally with our other unsecured obligations. As of September 27, 2025, the Company was in compliance with all covenants.\nNote 12 — Segment information. Net revenue by reportable segment for fiscal 2025: Datacenter Interconnect $2,748.4 million; Industrial Sensing $1,391.0 million; Automotive $673.2 million. Total $4,812.6 million."
+  }
+ ]
+}

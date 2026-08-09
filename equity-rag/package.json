@@ -1,0 +1,27 @@
+{
+  "name": "equity-rag",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Equity research RAG platform: ingests SEC filings, answers questions with citations, extracts structured financials, and measures its own accuracy with an eval pipeline.",
+  "scripts": {
+    "ingest": "tsx scripts/ingest.ts",
+    "build-fixture": "tsx scripts/build-fixture.ts",
+    "ask": "tsx scripts/ask.ts",
+    "extract": "tsx scripts/extract.ts",
+    "eval": "tsx scripts/eval.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.116.0",
+    "htmlparser2": "^10.0.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}
