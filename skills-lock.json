@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "skills": {
+    "hebrew-rtl-best-practices": {
+      "source": "skills-il/localization",
+      "sourceType": "github",
+      "computedHash": "fd5cf4464c9daff3b58b97e25e618c581cf5632edc1319a0764f5353b6965bdc"
+    },
+    "hebrew-tailwind-preset": {
+      "source": "skills-il/localization",
+      "sourceType": "github",
+      "computedHash": "7bd740c6483b6d34858419dd3d418e12e0ff398521d1858e1041d0bec7c617e4"
+    }
+  }
+}
