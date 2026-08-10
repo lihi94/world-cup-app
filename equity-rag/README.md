@@ -59,7 +59,7 @@ Current results on the fixture suite (deterministic stages):
 | Metric | Result |
 |---|---|
 | Unit tests | 19/19 pass |
-| Retrieval evidence recall@8 | **100%** (28/28 answerable cases, every gold quote retrieved) |
+| Retrieval evidence recall@8 | **100%** (28/28 answerable cases, every gold quote retrieved) — on a 13-chunk fixture corpus, so read this as "the harness and the graders work end to end", **not** as a strong retrieval result. The number that matters is the one on a real 400-page 10-K, where top-8 out of hundreds of chunks is a genuine test. |
 
 E2E metrics are produced by `npm run eval -- --e2e --judge` and written to `data/eval-report-*.json`.
 
@@ -83,7 +83,7 @@ tests/              vitest unit tests
 
 Design choices worth defending in an interview:
 
-- **BM25 before embeddings.** A lexical baseline is deterministic, free, offline, and — for numeric filing questions — surprisingly strong (100% evidence recall@8 on the fixture suite). Embeddings/hybrid retrieval is the obvious next step, and when it lands, the *same eval suite* will say whether it actually helps. That's the point of building the harness first.
+- **BM25 before embeddings.** A lexical baseline is deterministic, free, offline, and reproducible — which is what lets retrieval metrics run in CI with no API key. It is a *baseline*, not a claim to be the best retriever: on a 13-chunk fixture it trivially finds everything, and the real test is a full 10-K where filings repeat the same vocabulary across hundreds of chunks and semantic questions ("is the company's supply chain fragile?") have no lexical overlap with the passage that answers them. Hybrid retrieval is the obvious next step, and when it lands the *same eval suite* will say whether it actually helps — which is why the harness was built first.
 - **Refusal is a feature, not a failure mode.** The prompt contract makes "I don't know" a first-class output with a machine-parseable marker, and the eval suite contains questions designed to punish confident fabrication.
 - **Citations are verifiable by construction.** Because citations are chunk ids from the provided context, "did it cite something it never saw?" and "does the cited chunk contain the evidence?" are string operations, not judgment calls.
 - **Deterministic before model-graded.** Every metric that *can* be computed without an LLM is; the LLM judge is reserved for the one thing string matching can't do (claim-level grounding).
