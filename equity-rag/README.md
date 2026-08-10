@@ -69,6 +69,8 @@ E2E metrics are produced by `npm run eval -- --e2e --judge` and written to `data
 
 ## Architecture
 
+> Full design rationale — every decision, the alternatives rejected, and the known weaknesses — is in **[ARCHITECTURE.md](./ARCHITECTURE.md)**.
+
 ```
 scripts/            CLI entry points (ingest, ask, extract, eval, build-fixture)
 src/
